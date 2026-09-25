@@ -1,0 +1,9 @@
+# Environment for the zylia_analysis pipeline + notebook (verified working Jul 17, 2026)
+# System Python 3.11.2. Install: python3 -m pip install -r requirements.txt
+numpy==2.4.4
+scipy==1.17.1
+pandas==3.0.3
+matplotlib==3.10.9
+nbformat==5.7.3
+nbclient==0.7.2
+ipykernel==6.21.2

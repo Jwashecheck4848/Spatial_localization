@@ -1,0 +1,11 @@
+{
+  "_provenance": "Authoritative block->stimulus map from AvLocalization3D/Assets/_Scripts/TrialDefGenerator.cs (ExperimentType.WavFileSpeaker25 and ZyliaVirtualpoints; AudioStimIndex = block index = playlist position; 20 reps each, speech = 2 reps). NOT inferred from the audio. type drives the DOA analysis band (tone = narrowband around dominant_hz; broadband_noise = 0.4-1.2 kHz).",
+  "0": {"type": "broadband_noise", "dominant_hz": null, "label": "pink noise"},
+  "1": {"type": "tone", "dominant_hz": 250, "label": "250 Hz tone"},
+  "2": {"type": "tone", "dominant_hz": 1000, "label": "1000 Hz tone"},
+  "3": {"type": "tone", "dominant_hz": 6000, "label": "6000 Hz tone"},
+  "4": {"type": "broadband_noise", "dominant_hz": null, "label": "phone ringing"},
+  "5": {"type": "broadband_noise", "dominant_hz": null, "label": "applause"},
+  "6": {"type": "broadband_noise", "dominant_hz": null, "label": "female speech"},
+  "7": {"type": "broadband_noise", "dominant_hz": null, "label": "male speech"}
+}

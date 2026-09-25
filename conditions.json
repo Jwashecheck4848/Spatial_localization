@@ -1,0 +1,143 @@
+{
+  "_provenance": "Condition registry for the July 2026 main study (and later additions). Paths are relative to zylia_analysis/. June pilot outputs (results/, results/gt, results/virtual, results/virtual_selfcal, results/optim/predictions.json) are frozen artifacts: no condition may write into them. calibration.mode 'self' fits the Zylia mount on this condition's own pink-noise trials; 'external' applies the mount from the source condition's summary.json. mount_model: offset | rotation | auto.",
+  "conditions": {
+    "gt_cave": {
+      "enabled": true,
+      "data_root": "../Zylia_GroundTruth_Cave",
+      "results_dir": "results/gt_cave",
+      "figures_dir": "figures/gt_cave",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "gt_anechoic": {
+      "enabled": true,
+      "data_root": "../Zylia_GroundTruth_Anechoic",
+      "results_dir": "results/gt_anechoic",
+      "figures_dir": "figures/gt_anechoic",
+      "room": "anechoic",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "vbap": {
+      "enabled": true,
+      "data_root": "../Zylia_VBAP_Cave",
+      "results_dir": "results/vbap",
+      "figures_dir": "figures/vbap",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "vbap_gtmount": {
+      "enabled": true,
+      "data_root": "../Zylia_VBAP_Cave",
+      "results_dir": "results/vbap_gtmount",
+      "figures_dir": "figures/vbap_gtmount",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "calibration": {
+        "mode": "external",
+        "source": "gt_cave"
+      },
+      "_note": "Sensitivity check: same VBAP data scored under the ground-truth mount instead of its own self-fit (mount-transfer disagreement bound)."
+    },
+    "atmos": {
+      "enabled": false,
+      "data_root": "../Zylia_Dolby_Cave",
+      "results_dir": "results/atmos",
+      "figures_dir": "figures/atmos",
+      "room": "cave",
+      "render": "atmos",
+      "stim_json": "stimuli.json",
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      },
+      "_note": "Flip enabled to true once the Dolby Atmos sessions are recorded."
+    },
+    "ambi": {
+      "enabled": false,
+      "data_root": "../Zylia_Ambi_Cave",
+      "results_dir": "results/ambi",
+      "figures_dir": "figures/ambi",
+      "room": "cave",
+      "render": "ambisonics",
+      "stim_json": "stimuli.json",
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto",
+        "per_session": true
+      },
+      "_note": "Recorded 2026-07-15 but EXCLUDED: the three elevation blocks carry a large per-block frame rotation (~91 deg azimuth spread, tracking recording time not elevation) traced to a data-collection issue (mic reorientation and/or per-block decode frame). No defensible VBAP comparison until provenance is resolved. Do not re-enable without that. See memory ambisonics-data-status."
+    },
+    "ambi_gtmount": {
+      "enabled": false,
+      "data_root": "../Zylia_Ambi_Cave",
+      "results_dir": "results/ambi_gtmount",
+      "figures_dir": "figures/ambi_gtmount",
+      "room": "cave",
+      "render": "ambisonics",
+      "stim_json": "stimuli.json",
+      "calibration": {
+        "mode": "external",
+        "source": "gt_cave"
+      },
+      "_note": "Ambisonics under the ground-truth mount; EXCLUDED with the ambi condition (per-block frame confound). Kept as infrastructure for the post-provenance re-analysis."
+    }
+  },
+  "comparisons": [
+    {
+      "name": "room_effect",
+      "a": "gt_cave",
+      "b": "gt_anechoic",
+      "_note": "delta = CAVE - anechoic ground truth (positive = the room hurts); auto-restricts to the shared 12-azimuth x 3-elevation cells."
+    },
+    {
+      "name": "vbap_vs_gt",
+      "a": "vbap",
+      "b": "gt_cave",
+      "predictions": "results/optim/predictions_full.json"
+    },
+    {
+      "name": "vbap_gtmount_vs_gt",
+      "a": "vbap_gtmount",
+      "b": "gt_cave",
+      "predictions": "results/optim/predictions_full.json",
+      "_note": "Primary complete-sphere rendering penalty: VBAP scored under the ground-truth mount (no phantom-based position exclusions)."
+    },
+    {
+      "name": "vbap_mount_sensitivity",
+      "a": "vbap_gtmount",
+      "b": "vbap"
+    },
+    {
+      "name": "atmos_vs_gt",
+      "a": "atmos",
+      "b": "gt_cave"
+    },
+    {
+      "name": "renders_head_to_head",
+      "a": "vbap",
+      "b": "atmos"
+    }
+  ],
+  "_excluded_comparisons_note": "Ambisonics comparisons (ambi_vs_gt, ambi_gtmount_vs_gt, vbap_vs_ambi) were removed 2026-07-17: the ambi data has a per-block frame confound (data-collection issue). results/ambi and results/ambi_gtmount are retained on disk for the future provenance investigation but are not wired into any comparison. See memory ambisonics-data-status."
+}
