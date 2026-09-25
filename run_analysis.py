@@ -44,34 +44,55 @@ def _session_stamp(folder_name: str) -> str:
     return "".join(m.groups()) if m else ""
 
 
-def discover_sessions(data_root: Path, only: str | None = None,
+def discover_sessions(data_root: Path, only: str | list[str] | None = None,
+                      exclude: str | list[str] | None = None,
                       duplicates: str = "latest") -> list[Path]:
-    """Subject_* folders that can actually be analysed: a parseable position AND a Zylia WAV.
+    """Session folders under data_root that can actually be analysed: a Zylia WAV plus either a
+    parseable legacy `Subject_*` position or the newer single clip-log CSV (position fully
+    data-driven, no folder-name pattern required). data_root is assumed dedicated to one
+    condition's sessions, so every subfolder is a candidate -- no longer restricted to a
+    `Subject_*` glob, since clip-log sessions use a different naming scheme entirely.
 
-    Handles both single-position sessions and packed multi-azimuth sessions
-    (`Subject_0-345,...`). Folders missing the 19-channel WAV (an interrupted recording) or
-    whose name carries no position (an aborted session) are skipped with a printed reason, so
-    a partial collection never silently drops trials or crashes the run. `only` restricts to
-    folders whose name contains the substring (smoke tests).
+    Handles legacy single-position sessions, legacy packed multi-azimuth sessions
+    (`Subject_0-345,...`), and the current clip-log format (one CSV per folder, every speaker
+    position swept in one recording). Folders missing the 19-channel WAV (an interrupted
+    recording) or, for legacy names, whose name carries no position (an aborted session) are
+    skipped with a printed reason, so a partial collection never silently drops trials or
+    crashes the run. `only` restricts to folders whose name contains the given substring, or --
+    for multi-axis condition filtering (stimulus family AND speaker rig AND VBAP/mono AND curtain
+    state, all out of one shared data_root) -- ALL substrings in a given list. `exclude` (single
+    substring or list) drops any folder containing ANY of them, e.g. `exclude="_VBAP_"` to select
+    the mono takes of a rig that also has VBAP-rendered sessions.
 
-    When several sessions target the SAME position cell (re-takes, e.g. the ',R'-flagged
-    re-recordings), `duplicates` decides: 'latest' (default) keeps the newest take and prints
-    what it superseded, 'earliest' keeps the original, 'all' keeps every take as its own
-    position."""
+    When several sessions target the SAME cell (re-takes, e.g. the ',R'-flagged re-recordings,
+    or a later timestamp on an identically-named clip-log session), `duplicates` decides:
+    'latest' (default) keeps the newest take and prints what it superseded, 'earliest' keeps
+    the original, 'all' keeps every take as its own session. The dedup cell is the parsed
+    azimuth/elevation/radius for legacy `Subject_*` folders, or the folder name with its
+    trailing timestamp stripped (`unity.session_key`) for the newer clip-log sessions (which
+    carry no position in their name at all -- truth is fully per-trial, from the CSV)."""
+    onlys = [only] if isinstance(only, str) else list(only or [])
+    excludes = [exclude] if isinstance(exclude, str) else list(exclude or [])
     found = []
-    for p in sorted(data_root.glob("Subject_*")):
+    for p in sorted(data_root.iterdir()):
         if not p.is_dir():
             continue
-        if only and only not in p.name:
+        if onlys and not all(tok in p.name for tok in onlys):
+            continue
+        if excludes and any(tok in p.name for tok in excludes):
             continue
         if not wavio_list_wavs(p):
             print(f"  [skip] {p.name}: no Zylia WAV"); continue
-        try:
-            gt = unity.parse_ground_truth(p.name)
-        except ValueError:
-            print(f"  [skip] {p.name}: no position in folder name"); continue
-        cell = (tuple(gt["azimuth_range_deg"]) if gt.get("packed") else gt["azimuth_deg"],
-                gt["elevation_deg"], gt["radius_m"])
+        csvs = list(p.glob("*.csv"))
+        if len(csvs) == 1:
+            cell = unity.session_key(p.name)
+        else:
+            try:
+                gt = unity.parse_ground_truth(p.name)
+            except ValueError:
+                print(f"  [skip] {p.name}: no position in folder name"); continue
+            cell = (tuple(gt["azimuth_range_deg"]) if gt.get("packed") else gt["azimuth_deg"],
+                    gt["elevation_deg"], gt["radius_m"])
         found.append((cell, _session_stamp(p.name), p))
     if duplicates == "all":
         return [p for _, _, p in found]
@@ -139,14 +160,16 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
         calibration_label: str | None = None,
         mount_model: str = "auto",
         per_session: bool = False,
-        only: str | None = None,
+        only: str | list[str] | None = None,
+        exclude: str | list[str] | None = None,
         duplicates: str = "latest") -> dict:
     data_root = Path(data_root); results_dir = Path(results_dir); figures_dir = Path(figures_dir)
     results_dir.mkdir(parents=True, exist_ok=True); figures_dir.mkdir(parents=True, exist_ok=True)
-    folders = discover_sessions(data_root, only=only, duplicates=duplicates)
+    folders = discover_sessions(data_root, only=only, exclude=exclude, duplicates=duplicates)
     if not folders:
         raise SystemExit(f"No analysable Subject_* folders under {data_root}"
-                         + (f" matching --only {only!r}" if only else ""))
+                         + (f" matching --only {only!r}" if only else "")
+                         + (f" excluding {exclude!r}" if exclude else ""))
     print(f"Analysing {len(folders)} session(s) under {data_root}")
 
     # Stage 1: separate trials + classify stimuli (per folder), then reconcile to canonical labels.
@@ -517,6 +540,10 @@ def load_condition(name: str, conditions_file: Path | str = "conditions.json") -
               "results_dir": _resolve(c["results_dir"]),
               "figures_dir": _resolve(c["figures_dir"]),
               "duplicates": c.get("duplicates", "latest")}
+    if c.get("only"):
+        kwargs["only"] = c["only"]
+    if c.get("exclude"):
+        kwargs["exclude"] = c["exclude"]
     if c.get("stim_json"):
         kwargs["stim_classification"] = json.loads(_resolve(c["stim_json"]).read_text(encoding="utf-8"))
     cal = c.get("calibration", {})
@@ -567,7 +594,13 @@ def main() -> None:
         kwargs = load_condition(args.condition, args.conditions_file)
         if args.mount_model:
             kwargs["mount_model"] = args.mount_model
-        run(force=args.force, figures=not args.no_figures, only=args.only, **kwargs)
+        cond_only = kwargs.pop("only", None)
+        if args.only and cond_only:
+            only = (cond_only if isinstance(cond_only, list) else [cond_only]) + [args.only]
+        else:
+            only = args.only or cond_only
+        run(force=args.force, figures=not args.no_figures, only=only,
+            exclude=kwargs.pop("exclude", None), **kwargs)
         return
 
     cal = None

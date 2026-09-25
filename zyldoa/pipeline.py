@@ -1,8 +1,10 @@
 """Per-folder pipeline stages: (1) separate trials + classify stimuli, (2) estimate DOA.
 
-One folder = one speaker position. Stages are split so the stimulus classification can be
-reconciled across all positions (same speaker, same sounds) before DOA picks an analysis band.
-Results are cached (NPZ + CSV + JSON); pass force=True to recompute. WAVs are streamed.
+One folder = one recording session; the current clip-log format always sweeps every speaker
+position for one stimulus family in a single recording (`unity.parse_clip_log`). Stages are
+split so the stimulus classification can be reconciled across all positions (same speaker,
+same sounds) before DOA picks an analysis band. Results are cached (NPZ + CSV + JSON); pass
+force=True to recompute. WAVs are streamed.
 """
 from __future__ import annotations
 
@@ -17,7 +19,7 @@ from .wavio import ZyliaWav, open_recording
 from . import unity, onsets, stimid, doa, geometry
 
 ANALYSIS_WIN = (0.10, 0.40)  # seconds after onset: inside the gated stimuli
-CACHE_SCHEMA = 2  # v2: per-trial stim_index + per-trial truth (packed sessions); v1 caches are stale
+CACHE_SCHEMA = 3  # v3: single clip-log CSV per session (unity.parse_clip_log); v1/v2 caches are stale
 
 # Speech and the telephone ring have variable / intermittent envelopes, so the fixed early
 # window frequently lands on a quiet portion and the trial fails the SNR gate even though the
@@ -26,7 +28,7 @@ CACHE_SCHEMA = 2  # v2: per-trial stim_index + per-trial truth (packed sessions)
 # localizes poorly). Tones and continuous broadband (pink noise, applause) are left untouched,
 # so the headline room/tone results are unchanged. Changing this requires recomputing the DOA
 # stage (delete the *_trials.csv caches or run with force).
-ADAPTIVE_WIN_LABELS = {"male speech", "female speech", "phone ringing"}
+ADAPTIVE_WIN_LABELS = {"male speech", "female speech", "phone ringing", "phonemes"}
 ADAPTIVE_WIN_LEN, ADAPTIVE_WIN_MAX, ADAPTIVE_WIN_STEP = 0.40, 1.90, 0.10
 ADAPTIVE_SNR_DB = 6.0  # match run_analysis.RELIABLE_SNR_DB
 
@@ -50,10 +52,11 @@ def folder_tag(folder: Path) -> str:
 def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> dict:
     """Stage 1: separate trials (per-block clock) and identify each stimulus.
 
-    Trial timing is aligned per FrameData block (`BlockCount`), which is temporally contiguous
-    in every session layout. Stimulus identity, however, comes from TrialData's
-    `AudioTargetIndex` (`stim_index`): in packed multi-azimuth sessions `BlockCount` is the
-    azimuth block, not the sound, so QC spectra and classification are grouped by stim_index."""
+    Trial timing, stimulus identity, and truth position all come from the session's single
+    clip-log CSV (`unity.parse_clip_log`): `SpeakerChannelIndex` is used directly as the
+    clock-alignment block (trials for one speaker position are recorded contiguously), and
+    `stim_index` is constant for the whole session (the file's stimulus family, from its
+    filename) -- QC spectra and classification are grouped by stim_index as before."""
     folder = Path(folder)
     tag = folder_tag(folder)
     npz_path = results_dir / f"{tag}_align.npz"
@@ -64,27 +67,13 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
             meta["npz_path"] = str(npz_path)
             return meta
 
-    fd = unity.parse_frame_data(folder)
-    blocks = fd["block"]
-    td = unity.parse_trial_data(folder)
-
-    # Per-trial stimulus index and (packed sessions) per-trial truth, joined on trial id.
-    # Without TrialData (early pilots) the FrameData block is the stimulus index.
-    stim_index = np.array(
-        [(td[t]["stim_index"] if td and t in td and td[t]["stim_index"] is not None else b)
-         for t, b in zip(fd["trial"], blocks)], dtype=int)
-    truth_az = np.full(len(blocks), np.nan)
-    truth_el = np.full(len(blocks), np.nan)
-    truth_r = np.full(len(blocks), np.nan)
-    if td:
-        for i, t in enumerate(fd["trial"]):
-            tr = td.get(int(t), {}).get("truth")
-            if tr:
-                truth_az[i] = tr["azimuth_deg"]; truth_el[i] = tr["elevation_deg"]
-                truth_r[i] = tr["radius_m"]
+    log = unity.parse_clip_log(folder)
+    blocks = log["block"]
+    stim_index = log["stim_index"]
+    truth_az, truth_el, truth_r = log["truth_az"], log["truth_el"], log["truth_r"]
 
     wav = open_recording(folder)
-    al = onsets.align_trials(wav, fd["onset_unity_s"], blocks)
+    al = onsets.align_trials(wav, log["onset_unity_s"], blocks)
     osamp = al["onset_samples"]
     complete = complete_trials_mask(osamp, wav.sample_rate, wav.n_frames)
     if not complete.all():
@@ -98,7 +87,9 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
 
     meta = {
         "schema": CACHE_SCHEMA,
-        "folder": folder.name, "tag": tag, "ground_truth": unity.parse_ground_truth(folder.name),
+        "folder": folder.name, "tag": tag,
+        "ground_truth": {"packed": True, "azimuth_deg": None, "azimuth_range_deg": None,
+                         "elevation_deg": None, "radius_m": None, "family": log["family"]},
         "n_trials": int(len(blocks)), "n_truncated": int((~complete).sum()),
         "n_bursts_detected": al["n_bursts_detected"],
         "block_offsets": al["block_offsets"], "block_offset_confidence": al["block_offset_confidence"],
@@ -110,7 +101,7 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
     meta_path.write_text(json.dumps(meta, indent=2))
     np.savez_compressed(
         npz_path, env=al["env"], env_rate=al["env_rate"], onset_samples=osamp,
-        onset_s=al["onset_s"], bursts_s=al["bursts_s"], blocks=blocks, trial=fd["trial"],
+        onset_s=al["onset_s"], bursts_s=al["bursts_s"], blocks=blocks, trial=log["trial"],
         stim_index=stim_index, truth_az=truth_az, truth_el=truth_el, truth_r=truth_r,
         block_freqs=ident[next(iter(ident))]["freqs"],
         block_psd=np.array([ident[b]["psd"] for b in sorted(ident)]),
@@ -156,10 +147,11 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
                  force: bool = False, exclude_capsules=()) -> list[dict]:
     """Stage 2: per-trial DOA + in-band SNR, using the stimulus identity per trial.
 
-    Rows carry `stim_index` (the authoritative playlist index) alongside the FrameData
-    `block`; packed sessions additionally emit per-trial truth columns (else blank).
-    `exclude_capsules` (from the signal-quality layer: hot/dead sensors) removes those
-    capsules from the SH encoding — the remaining 18+ capsules still resolve first order."""
+    Rows carry `stim_index` (the session's stimulus family) alongside `block` (the speaker
+    position group used for clock alignment); truth columns are always populated since every
+    session is now a full multi-position sweep. `exclude_capsules` (from the signal-quality
+    layer: hot/dead sensors) removes those capsules from the SH encoding — the remaining
+    18+ capsules still resolve first order."""
     folder = Path(folder)
     tag = folder_tag(folder)
     excl = tuple(sorted(int(c) for c in exclude_capsules))
