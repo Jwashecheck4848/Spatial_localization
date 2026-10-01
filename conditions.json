@@ -117,7 +117,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -139,7 +139,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -159,7 +159,7 @@
         "Pink_Noise",
         "_Setup1_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -179,7 +179,7 @@
         "Pink_Noise",
         "_Setup1_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -196,12 +196,12 @@
       "render": "real",
       "stim_json": "stimuli.json",
       "only": [
-        "Pink_Noise",
+        "Pink_",
         "_Setup2_",
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -218,12 +218,12 @@
       "render": "real",
       "stim_json": "stimuli.json",
       "only": [
-        "Pink_Noise",
+        "Pink_",
         "_Setup2_",
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -240,10 +240,10 @@
       "render": "vbap",
       "stim_json": "stimuli.json",
       "only": [
-        "Pink_Noise",
+        "Pink_",
         "_Setup2_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -260,16 +260,62 @@
       "render": "vbap",
       "stim_json": "stimuli.json",
       "only": [
-        "Pink_Noise",
+        "Pink_",
         "_Setup2_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
         "label": "pink noise",
         "mount_model": "auto"
       }
+    },
+    "pn_s12_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s12_mono_cc",
+      "figures_dir": "figures/pn_s12_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP",
+        "_Outer_"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      },
+      "_note": "Setup1 + Setup2 physical pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). 'Pink_' (not 'Pink_Noise') to also match the one lowercase 'Pink_noise_Setup2_CC_' folder."
+    },
+    "pn_s12_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s12_vbap_cc",
+      "figures_dir": "figures/pn_s12_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_",
+        "_CC_",
+        "VBAP"
+      ],
+      "exclude": [
+        "_Outer_"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      },
+      "_note": "Setup1 + Setup2 VBAP pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). Excludes the Outer rig's VBAP180 sessions (different physical configuration)."
     },
     "pn_outer_mono_cc": {
       "enabled": true,
@@ -285,7 +331,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -307,7 +353,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -327,7 +373,7 @@
         "Pink_Noise",
         "_Outer_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -347,7 +393,7 @@
         "Pink_Noise",
         "_Outer_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "self",
@@ -369,7 +415,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -391,7 +437,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -411,7 +457,7 @@
         "Male_Phonemes",
         "_Setup1_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -431,7 +477,7 @@
         "Male_Phonemes",
         "_Setup1_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -453,7 +499,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -475,7 +521,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -495,7 +541,7 @@
         "Male_Phonemes",
         "_Setup2_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -515,7 +561,7 @@
         "Male_Phonemes",
         "_Setup2_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -537,7 +583,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -559,7 +605,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -579,7 +625,7 @@
         "Male_Phonemes",
         "_Outer_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -599,7 +645,7 @@
         "Male_Phonemes",
         "_Outer_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -621,7 +667,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -643,7 +689,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -663,7 +709,7 @@
         "Female_Phonemes",
         "_Setup1_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -683,7 +729,7 @@
         "Female_Phonemes",
         "_Setup1_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -705,7 +751,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -727,7 +773,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -747,7 +793,7 @@
         "Female_Phonemes",
         "_Setup2_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -767,7 +813,7 @@
         "Female_Phonemes",
         "_Setup2_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -789,7 +835,7 @@
         "_CC_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -811,7 +857,7 @@
         "_CO_"
       ],
       "exclude": [
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -831,7 +877,7 @@
         "Female_Phonemes",
         "_Outer_",
         "_CC_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
@@ -851,7 +897,7 @@
         "Female_Phonemes",
         "_Outer_",
         "_CO_",
-        "_VBAP_"
+        "VBAP"
       ],
       "calibration": {
         "mode": "external",
