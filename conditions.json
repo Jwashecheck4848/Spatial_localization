@@ -821,6 +821,50 @@
       },
       "_note": "Mount fit shared with 'pn_s2_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
+    "fphon_s12_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s12_mono_cc",
+      "figures_dir": "figures/fphon_s12_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP",
+        "_Outer_"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_mono_cc"
+      },
+      "_note": "Setup1 + Setup2 physical female-phonemes, curtain closed, pooled into one condition. Mount fit shared with 'pn_s12_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s12_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s12_vbap_cc",
+      "figures_dir": "figures/fphon_s12_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_CC_",
+        "VBAP"
+      ],
+      "exclude": [
+        "_Outer_"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_vbap_cc"
+      },
+      "_note": "Setup1 + Setup2 VBAP female-phonemes, curtain closed, pooled into one condition. Mount fit shared with 'pn_s12_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
     "fphon_outer_mono_cc": {
       "enabled": true,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
