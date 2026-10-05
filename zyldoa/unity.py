@@ -55,15 +55,38 @@ def session_key(folder_name: str) -> str:
 # Stimulus family is constant for an entire clip-log session and is read from the CSV's
 # FILENAME, not any column -- ClipNumber is reused (0-9) with different meaning in each
 # family (always 0 for the single pink-noise burst; 0-9 selects one of ten phonemes), so it
-# cannot identify which family a file belongs to on its own.
-FAMILY_STIM_INDEX = {"pink noise": 0, "phonemes": 1}
+# cannot identify which family a file belongs to on its own. Families added 2026-10-03 (250/
+# 1000/5000 Hz tones, phone ringing, applause) reuse the folder-naming convention directly
+# (e.g. '250hz200ms_Setup1_mono_CC_...', 'phone_ringing_200ms_...', 'applause_200ms_...').
+FAMILY_STIM_INDEX = {
+    "pink noise": 0,
+    "phonemes": 1,
+    "250 hz tone": 2,
+    "1000 hz tone": 3,
+    "5000 hz tone": 4,
+    "phone ringing": 5,
+    "applause": 6,
+}
 
 
 def clip_family(csv_name: str) -> str:
-    """Stimulus family ('pink noise' or 'phonemes') from a clip-log CSV's filename."""
+    """Stimulus family from a clip-log CSV's filename.
+
+    Order matters: 'phoneme' must be checked before 'phone' (it's a substring of it), and the
+    specific new-sound tokens before the generic 'pink'/'noise' fallback."""
     n = csv_name.lower()
     if "phoneme" in n:
         return "phonemes"
+    if "250hz" in n:
+        return "250 hz tone"
+    if "1000hz" in n:
+        return "1000 hz tone"
+    if "5000hz" in n:
+        return "5000 hz tone"
+    if "applause" in n:
+        return "applause"
+    if "phone" in n:
+        return "phone ringing"
     if "pink" in n or "noise" in n:
         return "pink noise"
     raise ValueError(f"Cannot determine stimulus family from CSV filename: {csv_name}")

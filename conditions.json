@@ -303,19 +303,63 @@
       "render": "vbap",
       "stim_json": "stimuli.json",
       "only": [
-        "Pink_",
+        "01_pink_noise",
         "_CC_",
-        "VBAP"
+        "vbap"
       ],
       "exclude": [
-        "_Outer_"
+        "Outer"
       ],
       "calibration": {
         "mode": "self",
         "label": "pink noise",
         "mount_model": "auto"
       },
-      "_note": "Setup1 + Setup2 VBAP pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). Excludes the Outer rig's VBAP180 sessions (different physical configuration)."
+      "_note": "Setup1 + Setup2 VBAP pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). Updated 2026-10-03 to the RE-RECORDED '01_pink_noise_setup{1,2}_vbap_CC_...' sessions (the original 'Pink_Noise_VBAP_Setup{1,2}_CC_...' sessions were truncated early); the new filter's lowercase tokens naturally exclude the old capital-case folders, no explicit exclude needed for them."
+    },
+    "newstim_s12_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/newstim_s12_mono_cc",
+      "figures_dir": "figures/newstim_s12_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "200ms",
+        "_CC_",
+        "mono"
+      ],
+      "exclude": [
+        "Outer"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_mono_cc"
+      },
+      "_note": "Setup1 + Setup2 physical recordings of the five new stimuli added 2026-10 (250/1000/5000 Hz tones, phone ringing, applause), curtain closed, pooled into one condition -- 'only' matches on the shared '200ms'/'_CC_'/'mono' tokens since the per-family folder-naming prefixes differ (e.g. '250hz200ms_...', 'phone_ringing_200ms_...', 'applause_200ms_...'). Mount fit shared with 'pn_s12_mono_cc' (same physical rig/render/curtain state); this condition has no pink-noise trials of its own to self-calibrate on."
+    },
+    "newstim_s12_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/newstim_s12_vbap_cc",
+      "figures_dir": "figures/newstim_s12_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "200ms",
+        "_CC_",
+        "vbap"
+      ],
+      "exclude": [
+        "Outer"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_vbap_cc"
+      },
+      "_note": "Setup1 + Setup2 VBAP recordings of the five new stimuli added 2026-10 (250/1000/5000 Hz tones, phone ringing, applause), curtain closed, pooled into one condition (see newstim_s12_mono_cc for the folder-naming rationale). Mount fit shared with 'pn_s12_vbap_cc' (same physical rig/render/curtain state); this condition has no pink-noise trials of its own to self-calibrate on."
     },
     "pn_outer_mono_cc": {
       "enabled": true,
