@@ -252,6 +252,16 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
             per_pos.setdefault(t["position"], []).append(t)
         for pid, prows in sorted(per_pos.items()):
             bb = _cal_trials(prows)
+            if not bb and external_calibration is not None:
+                # External mode performs no outlier rejection (_external_fit treats every
+                # position passed in as an inlier) -- so unlike self-fit mode, a position does
+                # not need a broadband/calibration-label trial to be legitimately represented
+                # here. Without this fallback, a session recording ONLY a tone (the clip-log
+                # format sweeps one stimulus family per folder) would never get any entry in
+                # `positions`, so its trials' position id could never land in inlier_ids and
+                # in_calibration would be wrongly False for every trial in that whole session
+                # (observed as tones vanishing entirely from miss_by_stim/comparisons).
+                bb = [t for t in prows if t["reliable"]]
             if not bb:
                 continue
             positions.append({"id": pid,
