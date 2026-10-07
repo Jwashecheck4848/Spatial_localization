@@ -155,7 +155,13 @@ summaries = {}
 for name in _cal_order(CONDITIONS_TO_RUN):
     print("=" * 74); print("CONDITION:", name)
     kwargs = ra.load_condition(name)
-    summaries[name] = ra.run(force=FORCE, figures=SHOW_FIGURES, only=ONLY, **kwargs)
+    cond_only = kwargs.pop("only", None)
+    if ONLY and cond_only:
+        only = (cond_only if isinstance(cond_only, list) else [cond_only]) + [ONLY]
+    else:
+        only = ONLY or cond_only
+    summaries[name] = ra.run(force=FORCE, figures=SHOW_FIGURES, only=only,
+                             exclude=kwargs.pop("exclude", None), **kwargs)
 
 frames = []
 for name in summaries:

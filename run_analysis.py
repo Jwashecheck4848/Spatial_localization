@@ -44,34 +44,55 @@ def _session_stamp(folder_name: str) -> str:
     return "".join(m.groups()) if m else ""
 
 
-def discover_sessions(data_root: Path, only: str | None = None,
+def discover_sessions(data_root: Path, only: str | list[str] | None = None,
+                      exclude: str | list[str] | None = None,
                       duplicates: str = "latest") -> list[Path]:
-    """Subject_* folders that can actually be analysed: a parseable position AND a Zylia WAV.
+    """Session folders under data_root that can actually be analysed: a Zylia WAV plus either a
+    parseable legacy `Subject_*` position or the newer single clip-log CSV (position fully
+    data-driven, no folder-name pattern required). data_root is assumed dedicated to one
+    condition's sessions, so every subfolder is a candidate -- no longer restricted to a
+    `Subject_*` glob, since clip-log sessions use a different naming scheme entirely.
 
-    Handles both single-position sessions and packed multi-azimuth sessions
-    (`Subject_0-345,...`). Folders missing the 19-channel WAV (an interrupted recording) or
-    whose name carries no position (an aborted session) are skipped with a printed reason, so
-    a partial collection never silently drops trials or crashes the run. `only` restricts to
-    folders whose name contains the substring (smoke tests).
+    Handles legacy single-position sessions, legacy packed multi-azimuth sessions
+    (`Subject_0-345,...`), and the current clip-log format (one CSV per folder, every speaker
+    position swept in one recording). Folders missing the 19-channel WAV (an interrupted
+    recording) or, for legacy names, whose name carries no position (an aborted session) are
+    skipped with a printed reason, so a partial collection never silently drops trials or
+    crashes the run. `only` restricts to folders whose name contains the given substring, or --
+    for multi-axis condition filtering (stimulus family AND speaker rig AND VBAP/mono AND curtain
+    state, all out of one shared data_root) -- ALL substrings in a given list. `exclude` (single
+    substring or list) drops any folder containing ANY of them, e.g. `exclude="_VBAP_"` to select
+    the mono takes of a rig that also has VBAP-rendered sessions.
 
-    When several sessions target the SAME position cell (re-takes, e.g. the ',R'-flagged
-    re-recordings), `duplicates` decides: 'latest' (default) keeps the newest take and prints
-    what it superseded, 'earliest' keeps the original, 'all' keeps every take as its own
-    position."""
+    When several sessions target the SAME cell (re-takes, e.g. the ',R'-flagged re-recordings,
+    or a later timestamp on an identically-named clip-log session), `duplicates` decides:
+    'latest' (default) keeps the newest take and prints what it superseded, 'earliest' keeps
+    the original, 'all' keeps every take as its own session. The dedup cell is the parsed
+    azimuth/elevation/radius for legacy `Subject_*` folders, or the folder name with its
+    trailing timestamp stripped (`unity.session_key`) for the newer clip-log sessions (which
+    carry no position in their name at all -- truth is fully per-trial, from the CSV)."""
+    onlys = [only] if isinstance(only, str) else list(only or [])
+    excludes = [exclude] if isinstance(exclude, str) else list(exclude or [])
     found = []
-    for p in sorted(data_root.glob("Subject_*")):
+    for p in sorted(data_root.iterdir()):
         if not p.is_dir():
             continue
-        if only and only not in p.name:
+        if onlys and not all(tok in p.name for tok in onlys):
+            continue
+        if excludes and any(tok in p.name for tok in excludes):
             continue
         if not wavio_list_wavs(p):
             print(f"  [skip] {p.name}: no Zylia WAV"); continue
-        try:
-            gt = unity.parse_ground_truth(p.name)
-        except ValueError:
-            print(f"  [skip] {p.name}: no position in folder name"); continue
-        cell = (tuple(gt["azimuth_range_deg"]) if gt.get("packed") else gt["azimuth_deg"],
-                gt["elevation_deg"], gt["radius_m"])
+        csvs = list(p.glob("*.csv"))
+        if len(csvs) == 1:
+            cell = unity.session_key(p.name)
+        else:
+            try:
+                gt = unity.parse_ground_truth(p.name)
+            except ValueError:
+                print(f"  [skip] {p.name}: no position in folder name"); continue
+            cell = (tuple(gt["azimuth_range_deg"]) if gt.get("packed") else gt["azimuth_deg"],
+                    gt["elevation_deg"], gt["radius_m"])
         found.append((cell, _session_stamp(p.name), p))
     if duplicates == "all":
         return [p for _, _, p in found]
@@ -100,6 +121,19 @@ def _session_day(folder_name: str) -> str:
     return f"{m.group(1)}-{m.group(2)}-{m.group(3)}" if m else "?"
 
 
+def _rig_of(folder_name: str) -> str:
+    """Canonical physical-rig identity ('setup1'/'setup2') parsed from a session folder name,
+    used to match a borrowed per-rig mount across conditions whose folder-naming otherwise
+    differs completely (different stimulus-family prefix, different recording timestamp) --
+    e.g. 'Pink_Setup1_CC___...' and 'applause_200ms_Setup1_mono_CC___...' both resolve to
+    'setup1'. Falls back to the full folder name if no setup token is found (legacy/other
+    naming), so per-rig lookups degrade gracefully to today's per-session behavior rather than
+    crashing or silently mis-grouping unrelated sessions together."""
+    import re as _re
+    m = _re.search(r"setup ?([12])", folder_name, _re.IGNORECASE)
+    return f"setup{m.group(1)}" if m else folder_name
+
+
 def _external_fit(cal: dict, positions: list[dict]) -> dict:
     """Build a calibration 'fit' that *applies* a pre-measured mounting (e.g. fit on the ground
     truth) to a new condition rather than re-fitting it. Every position is treated as a valid
@@ -120,6 +154,33 @@ def _external_fit(cal: dict, positions: list[dict]) -> dict:
                          "on this condition's data"]}
 
 
+def _external_fit_per_rig(per_rig_cal: dict, positions: list[dict]) -> dict:
+    """Like `_external_fit`, but selects each position's mount by its own rig identity
+    (`_rig_of` on the position's folder) instead of applying one single borrowed mount to
+    everything. Needed because a pooled source condition's single 'mounting' is only a
+    diagnostic compromise when the physical rig differs between its own sessions (e.g. the
+    Zylia was remounted between a Setup1 and a Setup2 recording) -- applying that one compromise
+    externally reproduces the same cross-rig error in every condition that borrows it. A
+    position whose rig has no matching fit falls back to the first available rig's mount
+    (better than crashing; its residual will flag the mismatch)."""
+    ids = [p["id"] for p in positions]
+    fallback_cal = next(iter(per_rig_cal.values()))
+    resid, inlier_az = {}, []
+    for p in positions:
+        rig = _rig_of(p["id"].split("|")[0])
+        cal = per_rig_cal.get(rig, fallback_cal)
+        az_c, el_c = calibrate.apply_mounting(cal, p["meas_az"], p["meas_el"])
+        resid[p["id"]] = round(float(calibrate.miss_deg(az_c, el_c, p["truth_az"], p["truth_el"])), 2)
+        inlier_az.append(float(p["truth_az"]))
+    return {"calibration": fallback_cal, "inlier_ids": ids, "outlier_ids": [],
+            "inlier_az": inlier_az, "outlier_az": [], "residual_deg": resid,
+            "warnings": ["mounting applied per-rig from an external calibration (one mount per "
+                         "physical setup, matched by folder name), not re-fit on this "
+                         "condition's data; 'mounting' here is only the first rig's mount, kept "
+                         "for diagnostic/report display -- see per_rig_mounts for what was "
+                         "actually applied"]}
+
+
 def reliable(t: dict) -> bool:
     hz = float(t["stim_hz"]) if t["stim_hz"] else 0.0
     return float(t["inband_snr_db"]) >= RELIABLE_SNR_DB and hz < MAX_RELIABLE_HZ
@@ -135,18 +196,21 @@ def _circmedian(deg) -> float:
 def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
         results_dir: Path = RESULTS, figures_dir: Path = FIGURES,
         external_calibration: dict | None = None,
+        external_calibration_per_rig: dict[str, dict] | None = None,
         stim_classification: dict | None = None,
         calibration_label: str | None = None,
         mount_model: str = "auto",
         per_session: bool = False,
-        only: str | None = None,
+        only: str | list[str] | None = None,
+        exclude: str | list[str] | None = None,
         duplicates: str = "latest") -> dict:
     data_root = Path(data_root); results_dir = Path(results_dir); figures_dir = Path(figures_dir)
     results_dir.mkdir(parents=True, exist_ok=True); figures_dir.mkdir(parents=True, exist_ok=True)
-    folders = discover_sessions(data_root, only=only, duplicates=duplicates)
+    folders = discover_sessions(data_root, only=only, exclude=exclude, duplicates=duplicates)
     if not folders:
         raise SystemExit(f"No analysable Subject_* folders under {data_root}"
-                         + (f" matching --only {only!r}" if only else ""))
+                         + (f" matching --only {only!r}" if only else "")
+                         + (f" excluding {exclude!r}" if exclude else ""))
     print(f"Analysing {len(folders)} session(s) under {data_root}")
 
     # Stage 1: separate trials + classify stimuli (per folder), then reconcile to canonical labels.
@@ -229,6 +293,16 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
             per_pos.setdefault(t["position"], []).append(t)
         for pid, prows in sorted(per_pos.items()):
             bb = _cal_trials(prows)
+            if not bb and (external_calibration is not None or external_calibration_per_rig is not None):
+                # External mode performs no outlier rejection (_external_fit treats every
+                # position passed in as an inlier) -- so unlike self-fit mode, a position does
+                # not need a broadband/calibration-label trial to be legitimately represented
+                # here. Without this fallback, a session recording ONLY a tone (the clip-log
+                # format sweeps one stimulus family per folder) would never get any entry in
+                # `positions`, so its trials' position id could never land in inlier_ids and
+                # in_calibration would be wrongly False for every trial in that whole session
+                # (observed as tones vanishing entirely from miss_by_stim/comparisons).
+                bb = [t for t in prows if t["reliable"]]
             if not bb:
                 continue
             positions.append({"id": pid,
@@ -242,10 +316,14 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
     # them. Fit and apply a mount per session (folder). This is the per-session analog of the
     # self-mount and, like it, absorbs any per-session rendering rotation, so report it as such.
     per_session_cals = None
-    if per_session and external_calibration is None:
+    if per_session and external_calibration is None and external_calibration_per_rig is None:
+        # Keyed by RIG (not the raw session/folder name): sessions sharing a physical setup
+        # (e.g. two retakes of the same rig) pool their positions into one fit, and -- more
+        # importantly -- this is the same key an externally-calibrated child condition's
+        # differently-named sessions resolve to, so its mount can be looked up by rig below.
         sess_positions: dict[str, list] = {}
         for p in positions:
-            sess_positions.setdefault(p["id"].split("|")[0], []).append(p)
+            sess_positions.setdefault(_rig_of(p["id"].split("|")[0]), []).append(p)
         per_session_cals = {}
         inlier_ids = set()
         for sess, ps in sorted(sess_positions.items()):
@@ -253,6 +331,9 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
             per_session_cals[sess] = sfit["calibration"]
             inlier_ids |= set(sfit["inlier_ids"])
         fit = calibrate.select_mount_fit(positions, mount_model)  # global fit: summary/diagnostic only
+    elif external_calibration_per_rig is not None:
+        fit = _external_fit_per_rig(external_calibration_per_rig, positions)
+        inlier_ids = set(fit["inlier_ids"])
     else:
         fit = (_external_fit(external_calibration, positions) if external_calibration is not None
                else calibrate.select_mount_fit(positions, mount_model))
@@ -263,7 +344,12 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
 
     for t in combined:
         az, el = float(t["doa_az"]), float(t["doa_el"])
-        tcal = per_session_cals[t["folder"]] if per_session_cals else cal
+        if per_session_cals:
+            tcal = per_session_cals[_rig_of(t["folder"])]
+        elif external_calibration_per_rig is not None:
+            tcal = external_calibration_per_rig.get(_rig_of(t["folder"]), cal)
+        else:
+            tcal = cal
         az_c, el_c = calibrate.apply_mounting(tcal, az, el)
         t["doa_az_cal"] = round(float(az_c), 2); t["doa_el_cal"] = round(float(el_c), 2)
         t["in_calibration"] = t["position"] in inlier_ids
@@ -273,11 +359,27 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
     _prune_stale_artifacts({m["tag"] for m in metas}, results_dir, figures_dir)
     _write_master_csv(results_dir / "all_trials.csv", combined)
     summary = summarize(combined, fit, canonical, mount_by_day=mount_by_day)
+    def _round_cal(c: dict) -> dict:
+        # Keep every key (including "R", the rotation matrix) -- this mount is reloaded from
+        # summary.json and reapplied by a *different process* (_external_fit_per_rig), not just
+        # displayed, so dropping "R" here silently breaks any rig whose fit picked the rotation
+        # model (apply_mounting then KeyErrors on the missing "R").
+        out = {}
+        for k, v in c.items():
+            if isinstance(v, float):
+                out[k] = round(v, 2)
+            elif k == "R":
+                out[k] = [[round(float(x), 6) for x in row] for row in v]
+            else:
+                out[k] = v
+        return out
     if per_session_cals is not None:
-        summary["per_session_mounts"] = {s: {k: (round(v, 2) if isinstance(v, float) else v)
-                                              for k, v in c.items() if k != "R"}
-                                         for s, c in per_session_cals.items()}
-        summary["calibration_note"] = ("mount fit and applied per session (folder); global "
+        summary["per_session_mounts"] = {s: _round_cal(c) for s, c in per_session_cals.items()}
+        # Keyed by rig (e.g. 'setup1'/'setup2'), not raw folder name, so an externally-
+        # calibrated child condition (different folder-naming entirely) can still look up the
+        # right mount for its own sessions -- see load_condition()/_external_fit_per_rig.
+        summary["per_rig_mounts"] = summary["per_session_mounts"]
+        summary["calibration_note"] = ("mount fit and applied per rig/session; global "
                                         "mount in 'mounting' is diagnostic only")
     summary["signal_quality"] = quality.aggregate(per_quality)
     summary["signal_quality"]["capsules_excluded_by_session"] = {
@@ -517,6 +619,10 @@ def load_condition(name: str, conditions_file: Path | str = "conditions.json") -
               "results_dir": _resolve(c["results_dir"]),
               "figures_dir": _resolve(c["figures_dir"]),
               "duplicates": c.get("duplicates", "latest")}
+    if c.get("only"):
+        kwargs["only"] = c["only"]
+    if c.get("exclude"):
+        kwargs["exclude"] = c["exclude"]
     if c.get("stim_json"):
         kwargs["stim_classification"] = json.loads(_resolve(c["stim_json"]).read_text(encoding="utf-8"))
     cal = c.get("calibration", {})
@@ -528,7 +634,15 @@ def load_condition(name: str, conditions_file: Path | str = "conditions.json") -
         if not src_summary.exists():
             raise SystemExit(f"Condition {name!r} needs the mount from {cal['source']!r}; "
                              f"run that condition first ({src_summary} missing)")
-        kwargs["external_calibration"] = json.loads(src_summary.read_text(encoding="utf-8"))["mounting"]
+        src_data = json.loads(src_summary.read_text(encoding="utf-8"))
+        if src_data.get("per_rig_mounts"):
+            # Source condition fit a separate mount per physical rig (e.g. its own sessions
+            # weren't all recorded under the same physical setup) -- borrow the WHOLE per-rig
+            # mapping instead of one pooled/compromise mount, so each of THIS condition's own
+            # sessions gets matched to its own rig's mount by folder name (see _rig_of).
+            kwargs["external_calibration_per_rig"] = src_data["per_rig_mounts"]
+        else:
+            kwargs["external_calibration"] = src_data["mounting"]
     else:
         kwargs["calibration_label"] = cal.get("label")
     return kwargs
@@ -567,7 +681,13 @@ def main() -> None:
         kwargs = load_condition(args.condition, args.conditions_file)
         if args.mount_model:
             kwargs["mount_model"] = args.mount_model
-        run(force=args.force, figures=not args.no_figures, only=args.only, **kwargs)
+        cond_only = kwargs.pop("only", None)
+        if args.only and cond_only:
+            only = (cond_only if isinstance(cond_only, list) else [cond_only]) + [args.only]
+        else:
+            only = args.only or cond_only
+        run(force=args.force, figures=not args.no_figures, only=only,
+            exclude=kwargs.pop("exclude", None), **kwargs)
         return
 
     cal = None

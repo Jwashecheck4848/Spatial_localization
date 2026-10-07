@@ -1,5 +1,6 @@
 {
-  "_provenance": "Condition registry for the July 2026 main study (and later additions). Paths are relative to zylia_analysis/. June pilot outputs (results/, results/gt, results/virtual, results/virtual_selfcal, results/optim/predictions.json) are frozen artifacts: no condition may write into them. calibration.mode 'self' fits the Zylia mount on this condition's own pink-noise trials; 'external' applies the mount from the source condition's summary.json. mount_model: offset | rotation | auto.",
+  "_provenance": "Condition registry for the July 2026 main study (and later additions). Paths are relative to zylia_analysis/. June pilot outputs (results/, results/gt, results/virtual, results/virtual_selfcal, results/optim/predictions.json) are frozen artifacts: no condition may write into them. calibration.mode 'self' fits the Zylia mount on this condition's own pink-noise trials; 'external' applies the mount from the source condition's summary.json. mount_model: offset | rotation | auto. `only` (string or list) restricts discover_sessions() to folders whose name contains ALL of the given substrings; `exclude` (string or list) drops any folder containing ANY of them -- used below to split one shared data_root into per-combination conditions.",
+  "_new_experiment_note": "pn_/mphon_/fphon_ x s1/s2/outer x mono/vbap x cc/co (36 conditions, added 2026-09-25): the new clip-log-format experiment (unity.parse_clip_log), one shared data_root filtered by folder-name substrings (stimulus family, speaker rig, VBAP-vs-mono, curtain state). Male_Phonemes and Female_Phonemes are kept as separate conditions (not merged into one 'phonemes' condition). Each mphon_/fphon_ condition has no pink-noise trials of its own, so it borrows ('external') the mount fit from the pn_ condition sharing its rig/render/curtain -- the mounting is a property of the physical rig, not the stimulus played. Comparisons across these conditions (e.g. VBAP vs mono, curtain open vs closed) are not yet wired into `comparisons` below; add them once results are in.",
   "conditions": {
     "gt_cave": {
       "enabled": true,
@@ -101,6 +102,898 @@
         "source": "gt_cave"
       },
       "_note": "Ambisonics under the ground-truth mount; EXCLUDED with the ambi condition (per-block frame confound). Kept as infrastructure for the post-provenance re-analysis."
+    },
+    "pn_s1_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s1_mono_cc",
+      "figures_dir": "figures/pn_s1_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Setup1_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s1_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s1_mono_co",
+      "figures_dir": "figures/pn_s1_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Setup1_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s1_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s1_vbap_cc",
+      "figures_dir": "figures/pn_s1_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Setup1_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s1_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s1_vbap_co",
+      "figures_dir": "figures/pn_s1_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Setup1_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s2_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s2_mono_cc",
+      "figures_dir": "figures/pn_s2_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_",
+        "_Setup2_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s2_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s2_mono_co",
+      "figures_dir": "figures/pn_s2_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_",
+        "_Setup2_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s2_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s2_vbap_cc",
+      "figures_dir": "figures/pn_s2_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_",
+        "_Setup2_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s2_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s2_vbap_co",
+      "figures_dir": "figures/pn_s2_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_",
+        "_Setup2_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_s12_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s12_mono_cc",
+      "figures_dir": "figures/pn_s12_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP",
+        "_Outer_"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto",
+        "per_session": true
+      },
+      "_note": "Setup1 + Setup2 physical pink-noise, curtain closed, pooled into one condition. 'Pink_' (not 'Pink_Noise') to also match the one lowercase 'Pink_noise_Setup2_CC_' folder. REVISED 2026-10-06 (twice): mount_model was briefly forced to 'offset' suspecting an overfit tilt, but switching models alone just changed which ~1/3 of positions passed the robust inlier gate (and therefore which positions silently counted in every downstream stat) -- it did not fix the real problem. The real issue: Setup1's own pink noise corrects to ~21 deg but Setup2's corrects to ~46 deg even within this SAME condition under a single pooled mount -- the Zylia was very likely physically remounted/repositioned between the Setup1 and Setup2 recording sessions (different days), so no single mount (offset OR rotation) can represent both. 'per_session': true fits and applies a SEPARATE mount per RIG (parsed from the folder name via run_analysis._rig_of -- 'setup1'/'setup2') instead of one pooled compromise, and run_analysis.py now propagates that per-rig mapping ('per_rig_mounts' in summary.json) to every externally-calibrated child condition (fphon_s12_mono_cc, newstim_s12_mono_cc), matching each of ITS sessions to the correct rig by the same folder-name parsing. mount_model restored to 'auto' since each rig's fit is now independent and can no longer be contaminated by the other rig's data."
+    },
+    "pn_s12_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_s12_vbap_cc",
+      "figures_dir": "figures/pn_s12_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "01_pink_noise",
+        "_CC_",
+        "vbap"
+      ],
+      "exclude": [
+        "Outer"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto",
+        "per_session": true
+      },
+      "_note": "Setup1 + Setup2 VBAP pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). Updated 2026-10-03 to the RE-RECORDED '01_pink_noise_setup{1,2}_vbap_CC_...' sessions (the original 'Pink_Noise_VBAP_Setup{1,2}_CC_...' sessions were truncated early); the new filter's lowercase tokens naturally exclude the old capital-case folders, no explicit exclude needed for them. 'per_session': true added 2026-10-06 for consistency with pn_s12_mono_cc: this condition's own rotation fit only passed 9/~27 positions as inliers (handedness flipped/reflection warning), meaning roughly 2/3 of its positions were ALSO being silently excluded from every downstream stat under the old pooled fit -- verify the per-rig corrected numbers still look reasonable per setup now that all positions are included."
+    },
+    "newstim_s12_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/newstim_s12_mono_cc",
+      "figures_dir": "figures/newstim_s12_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "200ms",
+        "_CC_",
+        "mono"
+      ],
+      "exclude": [
+        "Outer"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_mono_cc"
+      },
+      "_note": "Setup1 + Setup2 physical recordings of the five new stimuli added 2026-10 (250/1000/5000 Hz tones, phone ringing, applause), curtain closed, pooled into one condition -- 'only' matches on the shared '200ms'/'_CC_'/'mono' tokens since the per-family folder-naming prefixes differ (e.g. '250hz200ms_...', 'phone_ringing_200ms_...', 'applause_200ms_...'). Mount fit shared with 'pn_s12_mono_cc' (same physical rig/render/curtain state); this condition has no pink-noise trials of its own to self-calibrate on."
+    },
+    "newstim_s12_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/newstim_s12_vbap_cc",
+      "figures_dir": "figures/newstim_s12_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "200ms",
+        "_CC_",
+        "vbap"
+      ],
+      "exclude": [
+        "Outer"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_vbap_cc"
+      },
+      "_note": "Setup1 + Setup2 VBAP recordings of the five new stimuli added 2026-10 (250/1000/5000 Hz tones, phone ringing, applause), curtain closed, pooled into one condition (see newstim_s12_mono_cc for the folder-naming rationale). Mount fit shared with 'pn_s12_vbap_cc' (same physical rig/render/curtain state); this condition has no pink-noise trials of its own to self-calibrate on."
+    },
+    "pn_outer_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_outer_mono_cc",
+      "figures_dir": "figures/pn_outer_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Outer_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_outer_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_outer_mono_co",
+      "figures_dir": "figures/pn_outer_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Outer_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_outer_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_outer_vbap_cc",
+      "figures_dir": "figures/pn_outer_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Outer_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "pn_outer_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/pn_outer_vbap_co",
+      "figures_dir": "figures/pn_outer_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Pink_Noise",
+        "_Outer_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "self",
+        "label": "pink noise",
+        "mount_model": "auto"
+      }
+    },
+    "mphon_s1_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s1_mono_cc",
+      "figures_dir": "figures/mphon_s1_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup1_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_mono_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s1_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_s1_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s1_mono_co",
+      "figures_dir": "figures/mphon_s1_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup1_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_mono_co"
+      },
+      "_note": "Mount fit shared with 'pn_s1_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_s1_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s1_vbap_cc",
+      "figures_dir": "figures/mphon_s1_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup1_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_vbap_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s1_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_s1_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s1_vbap_co",
+      "figures_dir": "figures/mphon_s1_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup1_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_vbap_co"
+      },
+      "_note": "Mount fit shared with 'pn_s1_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_s2_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s2_mono_cc",
+      "figures_dir": "figures/mphon_s2_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup2_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_mono_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s2_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_s2_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s2_mono_co",
+      "figures_dir": "figures/mphon_s2_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup2_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_mono_co"
+      },
+      "_note": "Mount fit shared with 'pn_s2_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_s2_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s2_vbap_cc",
+      "figures_dir": "figures/mphon_s2_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup2_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_vbap_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s2_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_s2_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_s2_vbap_co",
+      "figures_dir": "figures/mphon_s2_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Setup2_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_vbap_co"
+      },
+      "_note": "Mount fit shared with 'pn_s2_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_outer_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_outer_mono_cc",
+      "figures_dir": "figures/mphon_outer_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Outer_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_mono_cc"
+      },
+      "_note": "Mount fit shared with 'pn_outer_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_outer_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_outer_mono_co",
+      "figures_dir": "figures/mphon_outer_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Outer_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_mono_co"
+      },
+      "_note": "Mount fit shared with 'pn_outer_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_outer_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_outer_vbap_cc",
+      "figures_dir": "figures/mphon_outer_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Outer_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_vbap_cc"
+      },
+      "_note": "Mount fit shared with 'pn_outer_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "mphon_outer_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/mphon_outer_vbap_co",
+      "figures_dir": "figures/mphon_outer_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Male_Phonemes",
+        "_Outer_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_vbap_co"
+      },
+      "_note": "Mount fit shared with 'pn_outer_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s1_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s1_mono_cc",
+      "figures_dir": "figures/fphon_s1_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup1_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_mono_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s1_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s1_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s1_mono_co",
+      "figures_dir": "figures/fphon_s1_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup1_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_mono_co"
+      },
+      "_note": "Mount fit shared with 'pn_s1_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s1_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s1_vbap_cc",
+      "figures_dir": "figures/fphon_s1_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup1_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_vbap_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s1_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s1_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s1_vbap_co",
+      "figures_dir": "figures/fphon_s1_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup1_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s1_vbap_co"
+      },
+      "_note": "Mount fit shared with 'pn_s1_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s2_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s2_mono_cc",
+      "figures_dir": "figures/fphon_s2_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup2_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_mono_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s2_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s2_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s2_mono_co",
+      "figures_dir": "figures/fphon_s2_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup2_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_mono_co"
+      },
+      "_note": "Mount fit shared with 'pn_s2_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s2_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s2_vbap_cc",
+      "figures_dir": "figures/fphon_s2_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup2_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_vbap_cc"
+      },
+      "_note": "Mount fit shared with 'pn_s2_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s2_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s2_vbap_co",
+      "figures_dir": "figures/fphon_s2_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Setup2_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s2_vbap_co"
+      },
+      "_note": "Mount fit shared with 'pn_s2_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s12_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s12_mono_cc",
+      "figures_dir": "figures/fphon_s12_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP",
+        "_Outer_"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_mono_cc"
+      },
+      "_note": "Setup1 + Setup2 physical female-phonemes, curtain closed, pooled into one condition. Mount fit shared with 'pn_s12_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_s12_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_s12_vbap_cc",
+      "figures_dir": "figures/fphon_s12_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_CC_",
+        "VBAP"
+      ],
+      "exclude": [
+        "_Outer_"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_s12_vbap_cc"
+      },
+      "_note": "Setup1 + Setup2 VBAP female-phonemes, curtain closed, pooled into one condition. Mount fit shared with 'pn_s12_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_outer_mono_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_outer_mono_cc",
+      "figures_dir": "figures/fphon_outer_mono_cc",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Outer_",
+        "_CC_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_mono_cc"
+      },
+      "_note": "Mount fit shared with 'pn_outer_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_outer_mono_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_outer_mono_co",
+      "figures_dir": "figures/fphon_outer_mono_co",
+      "room": "cave",
+      "render": "real",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Outer_",
+        "_CO_"
+      ],
+      "exclude": [
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_mono_co"
+      },
+      "_note": "Mount fit shared with 'pn_outer_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_outer_vbap_cc": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_outer_vbap_cc",
+      "figures_dir": "figures/fphon_outer_vbap_cc",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Outer_",
+        "_CC_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_vbap_cc"
+      },
+      "_note": "Mount fit shared with 'pn_outer_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
+    },
+    "fphon_outer_vbap_co": {
+      "enabled": true,
+      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "results/fphon_outer_vbap_co",
+      "figures_dir": "figures/fphon_outer_vbap_co",
+      "room": "cave",
+      "render": "vbap",
+      "stim_json": "stimuli.json",
+      "only": [
+        "Female_Phonemes",
+        "_Outer_",
+        "_CO_",
+        "VBAP"
+      ],
+      "calibration": {
+        "mode": "external",
+        "source": "pn_outer_vbap_co"
+      },
+      "_note": "Mount fit shared with 'pn_outer_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     }
   },
   "comparisons": [

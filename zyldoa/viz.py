@@ -60,7 +60,12 @@ def onset_validation(folder_name: str, npz: dict, out_path: Path) -> None:
 
 
 def doa_vs_truth(trials: list[dict], out_path: Path) -> None:
-    """Measured (calibrated) azimuth/elevation vs true speaker direction, colored by position."""
+    """Measured (calibrated) azimuth/elevation vs true speaker direction, colored by position.
+
+    truth_az is stored 0-360 deg (unity.parse_clip_log's `% 360.0`), but doa_az_cal is wrapped
+    to -180..180 deg (calibrate.apply_mounting's _wrap180). Plotting them in their native
+    ranges would put every truth above 180 deg far from the (actually correct, wrap-aware)
+    identity line, so the azimuth truth values are re-wrapped to -180..180 here to match."""
     fig, axs = plt.subplots(1, 2, figsize=(12, 5))
     truths = sorted({float(t["truth_az"]) for t in trials})
     cmap = plt.cm.tab10(np.linspace(0, 1, 10))
@@ -70,7 +75,10 @@ def doa_vs_truth(trials: list[dict], out_path: Path) -> None:
         for tv in truths:
             sub = [t for t in trials if float(t["truth_az"]) == tv and t["reliable"]]
             tk = "truth_az" if key == "doa_az_cal" else "truth_el"
-            x = [float(t[tk]) for t in sub]; y = [float(t[key]) for t in sub]
+            x = [float(t[tk]) for t in sub]
+            if key == "doa_az_cal":
+                x = [(xv + 180) % 360 - 180 for xv in x]
+            y = [float(t[key]) for t in sub]
             ax.scatter(x, y, s=10, alpha=0.5, color=colors[tv], label=f"speaker az {tv:g} deg")
         lo, hi = (-180, 180) if key == "doa_az_cal" else (-90, 90)
         ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.6)
