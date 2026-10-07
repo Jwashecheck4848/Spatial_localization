@@ -185,13 +185,23 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
             # unreliable by construction (SNR gate) so it never enters any statistic
             az, el, snr = 0.0, 0.0, -99.0
         else:
-            found = (_adaptive_window(wav, int(osamp[i]), info, mask)
-                     if info.get("label") in ADAPTIVE_WIN_LABELS else None)
-            if found is not None:
-                win, snr = found                    # speech/phone: early voiced-segment window
+            dur = info.get("clip_duration_s")
+            if dur:
+                # Short-burst stimulus (declared clip_duration_s): the legacy fixed/adaptive
+                # windows below assume a ~1 s clip and would run past this one's end into
+                # post-stimulus silence/reverberation, corrupting both the SNR gate and the DOA
+                # estimate itself. Use (almost) the whole burst instead: skip a brief onset ramp,
+                # stop briefly before the clip ends.
+                win = (0.02, max(0.05, float(dur) - 0.02))
+                snr = stimid.in_band_snr(wav, int(osamp[i]), info, post=win, capsule_mask=mask)
             else:
-                win = ANALYSIS_WIN                   # tones, pink noise, applause: unchanged
-                snr = stimid.in_band_snr(wav, int(osamp[i]), info, capsule_mask=mask)
+                found = (_adaptive_window(wav, int(osamp[i]), info, mask)
+                         if info.get("label") in ADAPTIVE_WIN_LABELS else None)
+                if found is not None:
+                    win, snr = found                # speech/phone: early voiced-segment window
+                else:
+                    win = ANALYSIS_WIN               # tones, pink noise, applause: unchanged
+                    snr = stimid.in_band_snr(wav, int(osamp[i]), info, capsule_mask=mask)
             az, el, mag = _trial_doa(wav, int(osamp[i]), band, win=win, mask=mask)
         rows.append({
             "trial": int(trial[i]), "block": int(blocks[i]), "stim_index": s,
