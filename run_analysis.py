@@ -359,10 +359,22 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
     _prune_stale_artifacts({m["tag"] for m in metas}, results_dir, figures_dir)
     _write_master_csv(results_dir / "all_trials.csv", combined)
     summary = summarize(combined, fit, canonical, mount_by_day=mount_by_day)
+    def _round_cal(c: dict) -> dict:
+        # Keep every key (including "R", the rotation matrix) -- this mount is reloaded from
+        # summary.json and reapplied by a *different process* (_external_fit_per_rig), not just
+        # displayed, so dropping "R" here silently breaks any rig whose fit picked the rotation
+        # model (apply_mounting then KeyErrors on the missing "R").
+        out = {}
+        for k, v in c.items():
+            if isinstance(v, float):
+                out[k] = round(v, 2)
+            elif k == "R":
+                out[k] = [[round(float(x), 6) for x in row] for row in v]
+            else:
+                out[k] = v
+        return out
     if per_session_cals is not None:
-        summary["per_session_mounts"] = {s: {k: (round(v, 2) if isinstance(v, float) else v)
-                                              for k, v in c.items() if k != "R"}
-                                         for s, c in per_session_cals.items()}
+        summary["per_session_mounts"] = {s: _round_cal(c) for s, c in per_session_cals.items()}
         # Keyed by rig (e.g. 'setup1'/'setup2'), not raw folder name, so an externally-
         # calibrated child condition (different folder-naming entirely) can still look up the
         # right mount for its own sessions -- see load_condition()/_external_fit_per_rig.
