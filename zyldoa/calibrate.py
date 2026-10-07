@@ -173,15 +173,29 @@ def select_mount_fit(positions: list[dict], mount_model: str = "auto",
         return float(np.median(r)) if r else float("inf")
 
     off_r, rot_r = _med_inlier_resid(off), _med_inlier_resid(rot)
-    els = {p["truth_el"] for p in positions if p["id"] in set(rot["inlier_ids"])}
-    pick_rot = (rot["calibration"].get("type") == "rotation" and len(els) >= 2
+    # Require a MINIMUM COUNT of inliers at each distinct elevation, not just >=2 distinct
+    # values -- a single stray position at an otherwise-unrepresented elevation technically
+    # makes len(unique elevations) >= 2 but cannot meaningfully constrain a 3-D tilt; a rotation
+    # "fit" against it is an overfit that reproduces the real speaker's true elevation at that
+    # one point while badly mis-tilting every other elevation. (Observed: a rig with 11 positions
+    # at one elevation + 1 at another selected rotation under the old len(els)>=2 check, and
+    # generalized to ~30-60 deg corrected miss on its own 11-position elevation band, vs ~3-9 deg
+    # once this was tightened.)
+    MIN_PER_ELEVATION = 3
+    el_counts: dict[float, int] = {}
+    for p in positions:
+        if p["id"] in set(rot["inlier_ids"]):
+            el_counts[p["truth_el"]] = el_counts.get(p["truth_el"], 0) + 1
+    well_supported_els = sum(1 for c in el_counts.values() if c >= MIN_PER_ELEVATION)
+    pick_rot = (rot["calibration"].get("type") == "rotation" and well_supported_els >= 2
                 and rot_r < off_r)
     chosen = rot if pick_rot else off
     chosen["model_selection"] = {
         "model": "rotation" if pick_rot else "offset",
         "offset_median_inlier_resid_deg": round(off_r, 2),
         "rotation_median_inlier_resid_deg": round(rot_r, 2) if np.isfinite(rot_r) else None,
-        "reason": ("rotation constrained by >=2 elevations and lower residual" if pick_rot else
+        "reason": (f"rotation constrained by >={MIN_PER_ELEVATION} inliers at each of >=2 "
+                   "elevations, and lower residual" if pick_rot else
                    "offset model kept (rotation unconstrained or not better)")}
     return chosen
 
