@@ -290,9 +290,10 @@
       "calibration": {
         "mode": "self",
         "label": "pink noise",
-        "mount_model": "offset"
+        "mount_model": "auto",
+        "per_session": true
       },
-      "_note": "Setup1 + Setup2 physical pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). 'Pink_' (not 'Pink_Noise') to also match the one lowercase 'Pink_noise_Setup2_CC_' folder. mount_model forced to 'offset' (2026-10-06): 'auto' picked a rigid-ROTATION mount here (median inlier residual 4.09 deg vs offset's 7.62 deg), but diagnose_mount_model.py/diagnose_by_position.py showed this rotation generalizes badly -- applied externally to fphon_s12_mono_cc/newstim_s12_mono_cc it produced a UNIFORM ~45-57 deg corrected miss across every position/azimuth/elevation/setup (vs ~4-8 deg for the self-calibrated pn_s12_mono_cc/pn_s12_vbap_cc themselves and ~12-19 deg for the equivalent externally-calibrated vbap conditions, which kept 'auto'->rotation and generalized fine). Root cause: the rotation Procrustes fit (zyldoa/calibrate.py:fit_mounting_rotation) only had 12 of 36 positions pass its own inlier gate, with almost every inlier at a distinct azimuth (11 distinct az among 12 positions) -- i.e. the robust set barely touches a second elevation, so the fitted tilt is poorly constrained and overfits those few off-elevation points rather than reflecting a real physical mount. The simpler 2-parameter offset model (az_offset + el_offset, no tilt) cannot overfit this way and is the safer choice for a mount that gets borrowed by many more positions than it was fit on."
+      "_note": "Setup1 + Setup2 physical pink-noise, curtain closed, pooled into one condition. 'Pink_' (not 'Pink_Noise') to also match the one lowercase 'Pink_noise_Setup2_CC_' folder. REVISED 2026-10-06 (twice): mount_model was briefly forced to 'offset' suspecting an overfit tilt, but switching models alone just changed which ~1/3 of positions passed the robust inlier gate (and therefore which positions silently counted in every downstream stat) -- it did not fix the real problem. The real issue: Setup1's own pink noise corrects to ~21 deg but Setup2's corrects to ~46 deg even within this SAME condition under a single pooled mount -- the Zylia was very likely physically remounted/repositioned between the Setup1 and Setup2 recording sessions (different days), so no single mount (offset OR rotation) can represent both. 'per_session': true fits and applies a SEPARATE mount per RIG (parsed from the folder name via run_analysis._rig_of -- 'setup1'/'setup2') instead of one pooled compromise, and run_analysis.py now propagates that per-rig mapping ('per_rig_mounts' in summary.json) to every externally-calibrated child condition (fphon_s12_mono_cc, newstim_s12_mono_cc), matching each of ITS sessions to the correct rig by the same folder-name parsing. mount_model restored to 'auto' since each rig's fit is now independent and can no longer be contaminated by the other rig's data."
     },
     "pn_s12_vbap_cc": {
       "enabled": true,
@@ -313,9 +314,10 @@
       "calibration": {
         "mode": "self",
         "label": "pink noise",
-        "mount_model": "auto"
+        "mount_model": "auto",
+        "per_session": true
       },
-      "_note": "Setup1 + Setup2 VBAP pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). Updated 2026-10-03 to the RE-RECORDED '01_pink_noise_setup{1,2}_vbap_CC_...' sessions (the original 'Pink_Noise_VBAP_Setup{1,2}_CC_...' sessions were truncated early); the new filter's lowercase tokens naturally exclude the old capital-case folders, no explicit exclude needed for them."
+      "_note": "Setup1 + Setup2 VBAP pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). Updated 2026-10-03 to the RE-RECORDED '01_pink_noise_setup{1,2}_vbap_CC_...' sessions (the original 'Pink_Noise_VBAP_Setup{1,2}_CC_...' sessions were truncated early); the new filter's lowercase tokens naturally exclude the old capital-case folders, no explicit exclude needed for them. 'per_session': true added 2026-10-06 for consistency with pn_s12_mono_cc: this condition's own rotation fit only passed 9/~27 positions as inliers (handedness flipped/reflection warning), meaning roughly 2/3 of its positions were ALSO being silently excluded from every downstream stat under the old pooled fit -- verify the per-rig corrected numbers still look reasonable per setup now that all positions are included."
     },
     "newstim_s12_mono_cc": {
       "enabled": true,
