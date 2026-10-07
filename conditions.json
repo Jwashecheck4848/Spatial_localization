@@ -290,9 +290,9 @@
       "calibration": {
         "mode": "self",
         "label": "pink noise",
-        "mount_model": "auto"
+        "mount_model": "offset"
       },
-      "_note": "Setup1 + Setup2 physical pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). 'Pink_' (not 'Pink_Noise') to also match the one lowercase 'Pink_noise_Setup2_CC_' folder."
+      "_note": "Setup1 + Setup2 physical pink-noise, curtain closed, pooled into one condition (self-calibrates on the combined pink-noise trials). 'Pink_' (not 'Pink_Noise') to also match the one lowercase 'Pink_noise_Setup2_CC_' folder. mount_model forced to 'offset' (2026-10-06): 'auto' picked a rigid-ROTATION mount here (median inlier residual 4.09 deg vs offset's 7.62 deg), but diagnose_mount_model.py/diagnose_by_position.py showed this rotation generalizes badly -- applied externally to fphon_s12_mono_cc/newstim_s12_mono_cc it produced a UNIFORM ~45-57 deg corrected miss across every position/azimuth/elevation/setup (vs ~4-8 deg for the self-calibrated pn_s12_mono_cc/pn_s12_vbap_cc themselves and ~12-19 deg for the equivalent externally-calibrated vbap conditions, which kept 'auto'->rotation and generalized fine). Root cause: the rotation Procrustes fit (zyldoa/calibrate.py:fit_mounting_rotation) only had 12 of 36 positions pass its own inlier gate, with almost every inlier at a distinct azimuth (11 distinct az among 12 positions) -- i.e. the robust set barely touches a second elevation, so the fitted tilt is poorly constrained and overfits those few off-elevation points rather than reflecting a real physical mount. The simpler 2-parameter offset model (az_offset + el_offset, no tilt) cannot overfit this way and is the safer choice for a mount that gets borrowed by many more positions than it was fit on."
     },
     "pn_s12_vbap_cc": {
       "enabled": true,
