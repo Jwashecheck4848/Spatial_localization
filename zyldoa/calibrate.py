@@ -34,17 +34,19 @@ def fit_mounting_robust(positions: list[dict], tol_deg: float = 15.0,
                         min_az_span_deg: float = 10.0) -> dict:
     """Fit the mount from per-position broadband directions, auto-rejecting inconsistent ones.
 
-    Generalizes to any set of speaker locations: tries each azimuth handedness, finds the largest
-    cluster of positions agreeing on a constant offset, and treats the rest as out-of-frame
-    anomalies. Positions are identified by `id` (folder name) so two locations sharing an azimuth
-    do not merge. `positions` items: {id, truth_az, truth_el, meas_az, meas_el}. Returns the
-    calibration, inlier/outlier ids+azimuths, per-position residual, and warnings about anything
-    that makes the fit fragile (few positions, narrow span, ambiguous handedness)."""
+    Generalizes to any set of speaker locations: tries each azimuth AND elevation handedness
+    (4 combinations total -- a physically inverted/upside-down mount flips elevation's sign
+    independently of azimuth's), finds the largest cluster of positions agreeing on a constant
+    offset on BOTH axes jointly, and treats the rest as out-of-frame anomalies. Positions are
+    identified by `id` (folder name) so two locations sharing an azimuth do not merge.
+    `positions` items: {id, truth_az, truth_el, meas_az, meas_el}. Returns the calibration,
+    inlier/outlier ids+azimuths, per-position residual, and warnings about anything that makes
+    the fit fragile (few positions, narrow span, ambiguous handedness)."""
     ids = [p["id"] for p in positions]
     if len(positions) < 2:
         p = positions[0] if positions else {"meas_az": 0, "truth_az": 0, "meas_el": 0, "truth_el": 0, "id": "?"}
         cal = {"az_sign": 1.0, "az_offset": float(p["truth_az"] - p["meas_az"]),
-               "el_offset": float(p["truth_el"] - p["meas_el"])}
+               "el_sign": 1.0, "el_offset": float(p["truth_el"] - p["meas_el"])}
         return {"calibration": cal, "inlier_ids": ids, "outlier_ids": [],
                 "inlier_az": [p["truth_az"]], "outlier_az": [], "residual_deg": {},
                 "warnings": ["single position: mount offset is assumed, not measured"]}
@@ -53,17 +55,29 @@ def fit_mounting_robust(positions: list[dict], tol_deg: float = 15.0,
     te = np.array([p["truth_el"] for p in positions], float)
     ma = np.array([p["meas_az"] for p in positions], float)
     me = np.array([p["meas_el"] for p in positions], float)
-    per_sign = {}
-    for s in (1.0, -1.0):
-        off = _wrap180(ta - s * ma)
-        best_i = max(range(len(off)), key=lambda i: int((np.abs(_wrap180(off - off[i])) < tol_deg).sum()))
-        per_sign[s] = np.abs(_wrap180(off - off[best_i])) < tol_deg
-    s = max(per_sign, key=lambda k: int(per_sign[k].sum()))
-    inl = per_sign[s]
+    # Inlier detection must require az AND el to BOTH agree with the candidate anchor position --
+    # an azimuth-only agreement check (the old behavior) can mark a position an "inlier" even when
+    # its elevation is wildly inconsistent with the rest, silently corrupting the median el_offset
+    # and leaving that whole elevation band mis-corrected after calibration (observed: one
+    # elevation corrected to ~5 deg, the opposite elevation stayed at ~50+ deg, both "in
+    # calibration", because the fit never required elevation consistency to call something an
+    # inlier in the first place).
+    combos = {}
+    for az_sign in (1.0, -1.0):
+        az_off = _wrap180(ta - az_sign * ma)
+        for el_sign in (1.0, -1.0):
+            el_off = te - el_sign * me
+            best_i = max(range(len(ta)), key=lambda i: int(
+                ((np.abs(_wrap180(az_off - az_off[i])) < tol_deg) &
+                 (np.abs(el_off - el_off[i]) < tol_deg)).sum()))
+            combos[(az_sign, el_sign)] = ((np.abs(_wrap180(az_off - az_off[best_i])) < tol_deg) &
+                                          (np.abs(el_off - el_off[best_i]) < tol_deg))
+    s, el_s = max(combos, key=lambda k: int(combos[k].sum()))
+    inl = combos[(s, el_s)]
 
     az_offset = _circmean_deg(_wrap180(ta[inl] - s * ma[inl]))
-    el_offset = float(np.median(te[inl] - me[inl]))
-    cal = {"az_sign": s, "az_offset": az_offset, "el_offset": el_offset}
+    el_offset = float(np.median(te[inl] - el_s * me[inl]))
+    cal = {"az_sign": s, "az_offset": az_offset, "el_sign": el_s, "el_offset": el_offset}
     az_c, el_c = apply_mounting(cal, ma, me)
     resid = {ids[k]: round(float(miss_deg(az_c[k], el_c[k], ta[k], te[k])), 2) for k in range(len(positions))}
 
@@ -75,8 +89,10 @@ def fit_mounting_robust(positions: list[dict], tol_deg: float = 15.0,
     span = _circular_span_deg(ta[inl]) if inl.sum() else 0.0
     if span < min_az_span_deg:
         warn.append(f"narrow azimuth span ({span:.0f} deg): azimuth scaling is unconstrained")
-    if int(per_sign[-s].sum()) >= int(inl.sum()):
+    if int(combos[(-s, el_s)].sum()) >= int(inl.sum()):
         warn.append("azimuth handedness is ambiguous (both signs fit comparably)")
+    if int(combos[(s, -el_s)].sum()) >= int(inl.sum()):
+        warn.append("elevation handedness is ambiguous (both signs fit comparably)")
     if len(np.unique(te)) <= 1:
         warn.append("all positions at one elevation: elevation accuracy is unvalidated and the "
                     "miss is effectively azimuth-only")
@@ -215,8 +231,8 @@ def fit_by_group(positions: list[dict], group_of: dict) -> dict:
         fit = fit_mounting_robust(ps)
         c = fit["calibration"]
         out[g] = {"n": len(ps), "az_sign": c["az_sign"],
-                  "az_offset": round(c["az_offset"], 2), "el_offset": round(c["el_offset"], 2),
-                  "n_inliers": len(fit["inlier_ids"])}
+                  "az_offset": round(c["az_offset"], 2), "el_sign": c.get("el_sign", 1.0),
+                  "el_offset": round(c["el_offset"], 2), "n_inliers": len(fit["inlier_ids"])}
     offs = [v["az_offset"] for v in out.values() if "az_offset" in v]
     els = [v["el_offset"] for v in out.values() if "el_offset" in v]
     spread = {"az_offset_spread_deg": round(float(np.ptp(offs)), 2) if len(offs) > 1 else None,
@@ -230,7 +246,7 @@ def apply_mounting(cal: dict, az, el):
         u = _azel_to_unit(az, el)
         return _unit_to_azel(u @ R.T)
     az_cal = _wrap180(cal["az_sign"] * np.asarray(az) + cal["az_offset"])
-    el_cal = np.asarray(el, float) + cal["el_offset"]
+    el_cal = cal.get("el_sign", 1.0) * np.asarray(el, float) + cal["el_offset"]
     # fold elevation back into [-90, 90], flipping azimuth by 180 across a pole
     over = el_cal > 90; under = el_cal < -90
     el_cal = np.where(over, 180 - el_cal, np.where(under, -180 - el_cal, el_cal))
@@ -255,4 +271,5 @@ def describe_mounting(cal: dict) -> str:
                 f"{'preserved' if det > 0 else 'flipped (reflection)'}")
     return (f"Zylia front (az 0) -> room az {cal['az_offset']:.1f} deg; "
             f"azimuth handedness {'preserved' if cal['az_sign'] > 0 else 'flipped'}; "
-            f"elevation offset {cal['el_offset']:+.1f} deg")
+            f"elevation offset {cal['el_offset']:+.1f} deg; "
+            f"elevation handedness {'preserved' if cal.get('el_sign', 1.0) > 0 else 'flipped'}")
