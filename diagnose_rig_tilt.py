@@ -53,7 +53,7 @@ def main() -> None:
     for rig, positions in sorted(by_rig_pos.items()):
         print(f"\n=== rig: {rig} ({len(positions)} positions) ===")
         print(f"{'truth_az':>9} {'truth_el':>9} | {'meas_az_med':>11} {'meas_el_med':>11} | "
-              f"{'az_diff':>8} {'el_diff':>8}")
+              f"{'az_diff':>8} {'el_diff':>8} | {'az_std':>7} {'el_std':>7}  n")
         entries = []
         for pid, prows in positions.items():
             ta = float(prows[0]["truth_az"]); te = float(prows[0]["truth_el"])
@@ -61,9 +61,18 @@ def main() -> None:
             mes = sorted(float(r["doa_el"]) for r in prows)
             ma = mas[len(mas) // 2]; me = mes[len(mes) // 2]
             az_diff = ((ta - ma) + 180) % 360 - 180
-            entries.append((ta, te, ma, me, az_diff, te - me))
-        for ta, te, ma, me, az_diff, el_diff in sorted(entries):
-            print(f"{ta:9.1f} {te:9.1f} | {ma:11.2f} {me:11.2f} | {az_diff:8.2f} {el_diff:8.2f}")
+            # Trial-level jitter (circular std for az, linear for el) -- distinguishes a NOISY
+            # raw estimate (large std: onset/signal-quality problem at this position) from a
+            # TIGHT-BUT-WRONG one (small std: systematic/physical error, not a signal problem).
+            import numpy as np
+            az_arr = np.array(mas)
+            az_std = float(np.degrees(np.sqrt(-2 * np.log(np.hypot(
+                np.mean(np.cos(np.radians(az_arr))), np.mean(np.sin(np.radians(az_arr))))))))
+            el_std = float(np.std(mes))
+            entries.append((ta, te, ma, me, az_diff, te - me, az_std, el_std, len(prows)))
+        for ta, te, ma, me, az_diff, el_diff, az_std, el_std, n in sorted(entries):
+            print(f"{ta:9.1f} {te:9.1f} | {ma:11.2f} {me:11.2f} | "
+                  f"{az_diff:8.2f} {el_diff:8.2f} | {az_std:7.2f} {el_std:7.2f} {n:3d}")
 
 
 if __name__ == "__main__":
