@@ -53,7 +53,7 @@ def main() -> None:
     for rig, positions in sorted(by_rig_pos.items()):
         print(f"\n=== rig: {rig} ({len(positions)} positions) ===")
         print(f"{'truth_az':>9} {'truth_el':>9} | {'meas_az_med':>11} {'meas_el_med':>11} | "
-              f"{'az_diff':>8} {'el_diff':>8} | {'az_std':>7} {'el_std':>7}  n")
+              f"{'az_diff':>8} {'el_diff':>8} | {'az_std':>7} {'el_std':>7}  n | {'snr_med':>7}")
         entries = []
         for pid, prows in positions.items():
             ta = float(prows[0]["truth_az"]); te = float(prows[0]["truth_el"])
@@ -69,10 +69,16 @@ def main() -> None:
             az_std = float(np.degrees(np.sqrt(-2 * np.log(np.hypot(
                 np.mean(np.cos(np.radians(az_arr))), np.mean(np.sin(np.radians(az_arr))))))))
             el_std = float(np.std(mes))
-            entries.append((ta, te, ma, me, az_diff, te - me, az_std, el_std, len(prows)))
-        for ta, te, ma, me, az_diff, el_diff, az_std, el_std, n in sorted(entries):
+            # Median in-band SNR at this position -- tests the floor-bounce/multipath hypothesis:
+            # if below-horizon (el-20) positions with high az/el jitter ALSO show lower SNR than
+            # above-horizon (el+20) positions, a comparable-strength floor reflection corrupting
+            # the active-intensity DOA vector (zyldoa/doa.py) is the likely explanation, not a
+            # calibration/mount bug.
+            snr_med = float(np.median([float(r["inband_snr_db"]) for r in prows]))
+            entries.append((ta, te, ma, me, az_diff, te - me, az_std, el_std, len(prows), snr_med))
+        for ta, te, ma, me, az_diff, el_diff, az_std, el_std, n, snr_med in sorted(entries):
             print(f"{ta:9.1f} {te:9.1f} | {ma:11.2f} {me:11.2f} | "
-                  f"{az_diff:8.2f} {el_diff:8.2f} | {az_std:7.2f} {el_std:7.2f} {n:3d}")
+                  f"{az_diff:8.2f} {el_diff:8.2f} | {az_std:7.2f} {el_std:7.2f} {n:3d} | {snr_med:7.2f}")
 
 
 if __name__ == "__main__":
