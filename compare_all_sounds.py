@@ -11,10 +11,12 @@ Prereq: run_analysis.py must already have produced results for all six condition
 
 Run:  python3 compare_all_sounds.py
 Writes results/comparisons/all_sounds_mono_vs_vbap/comparison.json and
-figures/comparisons/all_sounds_mono_vs_vbap_by_stimulus.png (+ azimuth_profile.png).
+figures/comparisons/all_sounds_mono_vs_vbap_by_stimulus.png (+ azimuth_profile.png), under
+--out-base if given (default: this script's own directory, i.e. the repo root).
 """
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -45,7 +47,7 @@ def _load_and_concat(registry: dict, names: list[str]) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def main() -> None:
+def main(out_base: Path | None = None) -> None:
     registry = _load_registry()
     df_mono = _load_and_concat(registry, MONO_CONDITIONS)
     df_vbap = _load_and_concat(registry, VBAP_CONDITIONS)
@@ -54,8 +56,9 @@ def main() -> None:
     if "error" in comp:
         raise SystemExit(f"{NAME}: {comp['error']}")
 
-    out_dir = EXP_DIR / "results" / "comparisons" / NAME
-    fig_dir = EXP_DIR / "figures" / "comparisons"
+    base = Path(out_base) if out_base is not None else EXP_DIR
+    out_dir = base / "results" / "comparisons" / NAME
+    fig_dir = base / "figures" / "comparisons"
     out_dir.mkdir(parents=True, exist_ok=True)
     fig_dir.mkdir(parents=True, exist_ok=True)
 
@@ -76,4 +79,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--out-base", default=None,
+                    help="write results/comparisons and figures/comparisons under this folder "
+                         "instead of the repo root (e.g. to keep output with an isolated "
+                         "conditions.json results_dir/figures_dir base)")
+    args = ap.parse_args()
+    main(Path(args.out_base) if args.out_base else None)

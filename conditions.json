@@ -3,7 +3,7 @@
   "_new_experiment_note": "pn_/mphon_/fphon_ x s1/s2/outer x mono/vbap x cc/co (36 conditions, added 2026-09-25): the new clip-log-format experiment (unity.parse_clip_log), one shared data_root filtered by folder-name substrings (stimulus family, speaker rig, VBAP-vs-mono, curtain state). Male_Phonemes and Female_Phonemes are kept as separate conditions (not merged into one 'phonemes' condition). Each mphon_/fphon_ condition has no pink-noise trials of its own, so it borrows ('external') the mount fit from the pn_ condition sharing its rig/render/curtain -- the mounting is a property of the physical rig, not the stimulus played. Comparisons across these conditions (e.g. VBAP vs mono, curtain open vs closed) are not yet wired into `comparisons` below; add them once results are in.",
   "conditions": {
     "gt_cave": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "../Zylia_GroundTruth_Cave",
       "results_dir": "results/gt_cave",
       "figures_dir": "figures/gt_cave",
@@ -17,7 +17,7 @@
       }
     },
     "gt_anechoic": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "../Zylia_GroundTruth_Anechoic",
       "results_dir": "results/gt_anechoic",
       "figures_dir": "figures/gt_anechoic",
@@ -31,7 +31,7 @@
       }
     },
     "vbap": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "../Zylia_VBAP_Cave",
       "results_dir": "results/vbap",
       "figures_dir": "figures/vbap",
@@ -45,7 +45,7 @@
       }
     },
     "vbap_gtmount": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "../Zylia_VBAP_Cave",
       "results_dir": "results/vbap_gtmount",
       "figures_dir": "figures/vbap_gtmount",
@@ -104,7 +104,7 @@
       "_note": "Ambisonics under the ground-truth mount; EXCLUDED with the ambi condition (per-block frame confound). Kept as infrastructure for the post-provenance re-analysis."
     },
     "pn_s1_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_mono_cc",
       "figures_dir": "figures/pn_s1_mono_cc",
@@ -126,7 +126,7 @@
       }
     },
     "pn_s1_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_mono_co",
       "figures_dir": "figures/pn_s1_mono_co",
@@ -148,7 +148,7 @@
       }
     },
     "pn_s1_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_vbap_cc",
       "figures_dir": "figures/pn_s1_vbap_cc",
@@ -168,7 +168,7 @@
       }
     },
     "pn_s1_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_vbap_co",
       "figures_dir": "figures/pn_s1_vbap_co",
@@ -188,7 +188,7 @@
       }
     },
     "pn_s2_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_mono_cc",
       "figures_dir": "figures/pn_s2_mono_cc",
@@ -210,7 +210,7 @@
       }
     },
     "pn_s2_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_mono_co",
       "figures_dir": "figures/pn_s2_mono_co",
@@ -232,7 +232,7 @@
       }
     },
     "pn_s2_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_vbap_cc",
       "figures_dir": "figures/pn_s2_vbap_cc",
@@ -252,7 +252,7 @@
       }
     },
     "pn_s2_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_vbap_co",
       "figures_dir": "figures/pn_s2_vbap_co",
@@ -274,8 +274,8 @@
     "pn_s12_mono_cc": {
       "enabled": true,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "results/pn_s12_mono_cc",
-      "figures_dir": "figures/pn_s12_mono_cc",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\pn_s12_mono_cc",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\pn_s12_mono_cc",
       "room": "cave",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -297,8 +297,8 @@
     "pn_s12_vbap_cc": {
       "enabled": true,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "results/pn_s12_vbap_cc",
-      "figures_dir": "figures/pn_s12_vbap_cc",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\pn_s12_vbap_cc",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\pn_s12_vbap_cc",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",
@@ -320,8 +320,8 @@
     "newstim_s12_mono_cc": {
       "enabled": true,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "results/newstim_s12_mono_cc",
-      "figures_dir": "figures/newstim_s12_mono_cc",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\newstim_s12_mono_cc",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\newstim_s12_mono_cc",
       "room": "cave",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -342,8 +342,8 @@
     "newstim_s12_vbap_cc": {
       "enabled": true,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "results/newstim_s12_vbap_cc",
-      "figures_dir": "figures/newstim_s12_vbap_cc",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\newstim_s12_vbap_cc",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\newstim_s12_vbap_cc",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",
@@ -362,7 +362,7 @@
       "_note": "Setup1 + Setup2 VBAP recordings of the five new stimuli added 2026-10 (250/1000/5000 Hz tones, phone ringing, applause), curtain closed, pooled into one condition (see newstim_s12_mono_cc for the folder-naming rationale). Mount fit shared with 'pn_s12_vbap_cc' (same physical rig/render/curtain state); this condition has no pink-noise trials of its own to self-calibrate on."
     },
     "pn_outer_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_mono_cc",
       "figures_dir": "figures/pn_outer_mono_cc",
@@ -384,7 +384,7 @@
       }
     },
     "pn_outer_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_mono_co",
       "figures_dir": "figures/pn_outer_mono_co",
@@ -406,7 +406,7 @@
       }
     },
     "pn_outer_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_vbap_cc",
       "figures_dir": "figures/pn_outer_vbap_cc",
@@ -426,7 +426,7 @@
       }
     },
     "pn_outer_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_vbap_co",
       "figures_dir": "figures/pn_outer_vbap_co",
@@ -446,7 +446,7 @@
       }
     },
     "mphon_s1_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_mono_cc",
       "figures_dir": "figures/mphon_s1_mono_cc",
@@ -468,7 +468,7 @@
       "_note": "Mount fit shared with 'pn_s1_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_s1_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_mono_co",
       "figures_dir": "figures/mphon_s1_mono_co",
@@ -490,7 +490,7 @@
       "_note": "Mount fit shared with 'pn_s1_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_s1_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_vbap_cc",
       "figures_dir": "figures/mphon_s1_vbap_cc",
@@ -510,7 +510,7 @@
       "_note": "Mount fit shared with 'pn_s1_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_s1_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_vbap_co",
       "figures_dir": "figures/mphon_s1_vbap_co",
@@ -530,7 +530,7 @@
       "_note": "Mount fit shared with 'pn_s1_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_s2_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_mono_cc",
       "figures_dir": "figures/mphon_s2_mono_cc",
@@ -552,7 +552,7 @@
       "_note": "Mount fit shared with 'pn_s2_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_s2_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_mono_co",
       "figures_dir": "figures/mphon_s2_mono_co",
@@ -574,7 +574,7 @@
       "_note": "Mount fit shared with 'pn_s2_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_s2_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_vbap_cc",
       "figures_dir": "figures/mphon_s2_vbap_cc",
@@ -594,7 +594,7 @@
       "_note": "Mount fit shared with 'pn_s2_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_s2_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_vbap_co",
       "figures_dir": "figures/mphon_s2_vbap_co",
@@ -614,7 +614,7 @@
       "_note": "Mount fit shared with 'pn_s2_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_outer_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_mono_cc",
       "figures_dir": "figures/mphon_outer_mono_cc",
@@ -636,7 +636,7 @@
       "_note": "Mount fit shared with 'pn_outer_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_outer_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_mono_co",
       "figures_dir": "figures/mphon_outer_mono_co",
@@ -658,7 +658,7 @@
       "_note": "Mount fit shared with 'pn_outer_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_outer_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_vbap_cc",
       "figures_dir": "figures/mphon_outer_vbap_cc",
@@ -678,7 +678,7 @@
       "_note": "Mount fit shared with 'pn_outer_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "mphon_outer_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_vbap_co",
       "figures_dir": "figures/mphon_outer_vbap_co",
@@ -698,7 +698,7 @@
       "_note": "Mount fit shared with 'pn_outer_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s1_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_mono_cc",
       "figures_dir": "figures/fphon_s1_mono_cc",
@@ -720,7 +720,7 @@
       "_note": "Mount fit shared with 'pn_s1_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s1_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_mono_co",
       "figures_dir": "figures/fphon_s1_mono_co",
@@ -742,7 +742,7 @@
       "_note": "Mount fit shared with 'pn_s1_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s1_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_vbap_cc",
       "figures_dir": "figures/fphon_s1_vbap_cc",
@@ -762,7 +762,7 @@
       "_note": "Mount fit shared with 'pn_s1_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s1_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_vbap_co",
       "figures_dir": "figures/fphon_s1_vbap_co",
@@ -782,7 +782,7 @@
       "_note": "Mount fit shared with 'pn_s1_vbap_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s2_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_mono_cc",
       "figures_dir": "figures/fphon_s2_mono_cc",
@@ -804,7 +804,7 @@
       "_note": "Mount fit shared with 'pn_s2_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s2_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_mono_co",
       "figures_dir": "figures/fphon_s2_mono_co",
@@ -826,7 +826,7 @@
       "_note": "Mount fit shared with 'pn_s2_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s2_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_vbap_cc",
       "figures_dir": "figures/fphon_s2_vbap_cc",
@@ -846,7 +846,7 @@
       "_note": "Mount fit shared with 'pn_s2_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_s2_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_vbap_co",
       "figures_dir": "figures/fphon_s2_vbap_co",
@@ -868,8 +868,8 @@
     "fphon_s12_mono_cc": {
       "enabled": true,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "results/fphon_s12_mono_cc",
-      "figures_dir": "figures/fphon_s12_mono_cc",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\fphon_s12_mono_cc",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\fphon_s12_mono_cc",
       "room": "cave",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -890,8 +890,8 @@
     "fphon_s12_vbap_cc": {
       "enabled": true,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "results/fphon_s12_vbap_cc",
-      "figures_dir": "figures/fphon_s12_vbap_cc",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\fphon_s12_vbap_cc",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\fphon_s12_vbap_cc",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",
@@ -910,7 +910,7 @@
       "_note": "Setup1 + Setup2 VBAP female-phonemes, curtain closed, pooled into one condition. Mount fit shared with 'pn_s12_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_outer_mono_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_mono_cc",
       "figures_dir": "figures/fphon_outer_mono_cc",
@@ -932,7 +932,7 @@
       "_note": "Mount fit shared with 'pn_outer_mono_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_outer_mono_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_mono_co",
       "figures_dir": "figures/fphon_outer_mono_co",
@@ -954,7 +954,7 @@
       "_note": "Mount fit shared with 'pn_outer_mono_co' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_outer_vbap_cc": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_vbap_cc",
       "figures_dir": "figures/fphon_outer_vbap_cc",
@@ -974,7 +974,7 @@
       "_note": "Mount fit shared with 'pn_outer_vbap_cc' (same physical rig/render/curtain state); this session has no pink-noise trials of its own to self-calibrate on."
     },
     "fphon_outer_vbap_co": {
-      "enabled": true,
+      "enabled": false,
       "data_root": "T:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_vbap_co",
       "figures_dir": "figures/fphon_outer_vbap_co",
@@ -1030,5 +1030,6 @@
       "b": "atmos"
     }
   ],
-  "_excluded_comparisons_note": "Ambisonics comparisons (ambi_vs_gt, ambi_gtmount_vs_gt, vbap_vs_ambi) were removed 2026-07-17: the ambi data has a per-block frame confound (data-collection issue). results/ambi and results/ambi_gtmount are retained on disk for the future provenance investigation but are not wired into any comparison. See memory ambisonics-data-status."
+  "_excluded_comparisons_note": "Ambisonics comparisons (ambi_vs_gt, ambi_gtmount_vs_gt, vbap_vs_ambi) were removed 2026-07-17: the ambi data has a per-block frame confound (data-collection issue). results/ambi and results/ambi_gtmount are retained on disk for the future provenance investigation but are not wired into any comparison. See memory ambisonics-data-status.",
+  "_baseline_note": "BRANCH newdata-first-pass: isolated baseline run of the new (2026-10) stimulus-family data using the FIRST-PASS analysis code, before the calibration-debugging session on Test (per-rig mounts, elevation-handedness fix, etc.). Only the 6 pooled Setup1+2 conditions (pn_s12_*, fphon_s12_*, newstim_s12_*) are enabled; every other condition (the July gt_cave/gt_anechoic/vbap study and the per-setup s1/s2/outer breakdowns) is disabled for this run. Their results_dir/figures_dir point outside the repo, to T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output, so this pass never touches the shared results/ and figures/ folders used by other branches/conditions."
 }
