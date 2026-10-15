@@ -1,11 +1,12 @@
 {
   "_provenance": "Condition registry for the July 2026 main study (and later additions). Paths are relative to zylia_analysis/. June pilot outputs (results/, results/gt, results/virtual, results/virtual_selfcal, results/optim/predictions.json) are frozen artifacts: no condition may write into them. calibration.mode 'self' fits the Zylia mount on this condition's own pink-noise trials; 'external' applies the mount from the source condition's summary.json. mount_model: offset | rotation | auto.",
+  "_legacy_output_note": "BRANCH legacy-output-redirect: proof-of-concept re-run of the original July study on the old data, output-path-only change. gt_cave/gt_anechoic/vbap/vbap_gtmount's results_dir/figures_dir now point to an absolute sibling folder (T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output) instead of the repo-relative results/figures used on main, so this run never touches the shared results/ and figures/ folders used by other branches. compare_conditions.py, paper_stats.py, and make_paper_figures.py were likewise repointed (their own OUT_BASE constants) to read/write under that same folder. No data_root, calibration, or analysis setting was changed.",
   "conditions": {
     "gt_cave": {
       "enabled": true,
       "data_root": "../Zylia_GroundTruth_Cave",
-      "results_dir": "results/gt_cave",
-      "figures_dir": "figures/gt_cave",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\gt_cave",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\gt_cave",
       "room": "cave",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -18,8 +19,8 @@
     "gt_anechoic": {
       "enabled": true,
       "data_root": "../Zylia_GroundTruth_Anechoic",
-      "results_dir": "results/gt_anechoic",
-      "figures_dir": "figures/gt_anechoic",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\gt_anechoic",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\gt_anechoic",
       "room": "anechoic",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -32,8 +33,8 @@
     "vbap": {
       "enabled": true,
       "data_root": "../Zylia_VBAP_Cave",
-      "results_dir": "results/vbap",
-      "figures_dir": "figures/vbap",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\vbap",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\vbap",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",
@@ -46,8 +47,8 @@
     "vbap_gtmount": {
       "enabled": true,
       "data_root": "../Zylia_VBAP_Cave",
-      "results_dir": "results/vbap_gtmount",
-      "figures_dir": "figures/vbap_gtmount",
+      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\vbap_gtmount",
+      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\vbap_gtmount",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",

@@ -336,7 +336,7 @@ Rerun both after any comparison rerun; then rebuild the paper.
 code(r"""
 import paper_stats
 paper_stats.main()
-ps = json.loads((EXP_DIR / "results" / "paper_stats.json").read_text())
+ps = json.loads((paper_stats.R / "paper_stats.json").read_text())
 
 display(Markdown("### Room effect per stimulus (medians, multiplier, tails)"))
 display(pd.DataFrame(ps["room_effect"]["per_stimulus"]).T[

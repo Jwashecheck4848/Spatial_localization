@@ -19,7 +19,11 @@ import numpy as np
 import pandas as pd
 
 EXP_DIR = Path(__file__).resolve().parent
-R = EXP_DIR / "results"
+# BRANCH legacy-output-redirect: paper_stats.json and its comparison inputs come from a
+# sibling folder instead of zylia_analysis/results, matching compare_conditions.py's OUT_BASE
+# and conditions.json's results_dir/figures_dir for this run.
+OUT_BASE = EXP_DIR.parent / "zylia_legacy_output"
+R = OUT_BASE / "results"
 SPEAKERS_CSV = EXP_DIR.parent / "AvLocalization3D" / "Assets" / "CaveSpeakerPositions.csv"
 OPT_NOTEBOOK = EXP_DIR.parent / "SpeakerOptimization" / "speaker_optimization_viz.ipynb"
 

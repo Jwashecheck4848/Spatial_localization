@@ -30,6 +30,10 @@ import matplotlib.pyplot as plt
 from zyldoa import stats
 
 EXP_DIR = Path(__file__).resolve().parent
+# BRANCH legacy-output-redirect: all comparison output (results/comparisons,
+# figures/comparisons) goes to a sibling folder instead of inside zylia_analysis/, so this
+# one-off run never touches the shared results/ and figures/ folders used by other branches.
+OUT_BASE = EXP_DIR.parent / "zylia_legacy_output"
 BLUE, ORANGE, GREEN, GRAY = "#5B7FA5", "#E8873C", "#4C9A6B", "#9aa0a6"
 
 
@@ -194,8 +198,8 @@ def _fig_azimuth_profile(df_a, df_b, comp: dict, out_png: Path,
 def run_comparison(registry: dict, spec: dict, force: bool = False) -> dict | None:
     name = spec["name"]
     la, lb = spec["a"], spec["b"]
-    out_dir = EXP_DIR / "results" / "comparisons" / name
-    fig_dir = EXP_DIR / "figures" / "comparisons"
+    out_dir = OUT_BASE / "results" / "comparisons" / name
+    fig_dir = OUT_BASE / "figures" / "comparisons"
     out_json = out_dir / "comparison.json"
     for cond in (la, lb):
         rd = _results_dir(registry, cond)

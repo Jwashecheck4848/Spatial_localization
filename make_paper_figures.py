@@ -21,7 +21,11 @@ from compare_conditions import load_condition_results, _cells, _usable, _load_pr
 from zyldoa import stats
 
 EXP_DIR = Path(__file__).resolve().parent
-PAPER_FIGS = EXP_DIR.parent / "Paper" / "figures"
+# BRANCH legacy-output-redirect: figures + their comparison inputs come from a sibling
+# folder instead of zylia_analysis/results and ../Paper/figures, matching
+# compare_conditions.py's OUT_BASE and conditions.json's results_dir/figures_dir.
+OUT_BASE = EXP_DIR.parent / "zylia_legacy_output"
+PAPER_FIGS = OUT_BASE / "figures" / "paper"
 
 ORANGE, BLUE, GRAY = "#E8873C", "#5B7FA5", "#6a6f76"
 EDGE = "#2b2b2b"
@@ -35,7 +39,7 @@ def _err(stat_d):
 
 
 def bars(comp_name: str, label_a: str, label_b: str, out_png: Path) -> None:
-    comp = json.loads((EXP_DIR / "results" / "comparisons" / comp_name /
+    comp = json.loads((OUT_BASE / "results" / "comparisons" / comp_name /
                        "comparison.json").read_text(encoding="utf-8"))
     la, lb = comp["a"], comp["b"]
     labs = list(comp["per_stimulus"].keys())
@@ -62,7 +66,7 @@ def bars(comp_name: str, label_a: str, label_b: str, out_png: Path) -> None:
 
 
 def azimuth_profile(comp_name: str, label_a: str, label_b: str, out_png: Path) -> None:
-    comp = json.loads((EXP_DIR / "results" / "comparisons" / comp_name /
+    comp = json.loads((OUT_BASE / "results" / "comparisons" / comp_name /
                        "comparison.json").read_text(encoding="utf-8"))
     reg = json.loads((EXP_DIR / "conditions.json").read_text(encoding="utf-8"))
     spec = next(c for c in reg["comparisons"] if c["name"] == comp_name)
@@ -117,7 +121,7 @@ PAPER_RC = {"font.family": "sans-serif", "font.size": 8, "axes.linewidth": 0.6,
 
 
 def _comp(name):
-    return json.loads((EXP_DIR / "results" / "comparisons" / name /
+    return json.loads((OUT_BASE / "results" / "comparisons" / name /
                        "comparison.json").read_text(encoding="utf-8"))
 
 
