@@ -25,10 +25,16 @@ DATA_ROOT = EXP_DIR.parent
 RESULTS = EXP_DIR / "results"
 FIGURES = EXP_DIR / "figures"
 RELIABLE_SNR_DB = 6.0       # below this a trial's DOA is untrustworthy
-# A coarse high-frequency gate to drop the 6 kHz tone (kr~4.5, far past the order-1 ceiling). It is
-# NOT the order-1 validity limit itself -- that is kr~1.1 (~1.1 kHz), enforced by the analysis band
-# in doa.py. No analysed tone lies between 1.2 and 6 kHz, so the exact cap value is immaterial here.
-MAX_RELIABLE_HZ = 5000.0
+# A coarse high-frequency gate to drop tones far past the order-1 ceiling (kr~1.1, ~1.1 kHz,
+# enforced by the analysis band in doa.py -- this is NOT that validity limit itself, just a
+# backstop). Originally sized to drop the retired 6 kHz tone with a comfortable margin; the
+# 2026-10-03 stimulus set added a tone at EXACTLY 5000 Hz, and a strict `<` against a 5000.0
+# cutoff silently marked every one of its trials unreliable (reliable() requires hz <
+# MAX_RELIABLE_HZ), hard-excluding the whole stimulus from every downstream stat and figure --
+# contrary to stimuli.json's own guidance to keep it as "informational" data, not drop it
+# outright. Raised past 5000 so the 5000 Hz tone passes this gate (its SNR can still fail the
+# separate RELIABLE_SNR_DB check on its own merits).
+MAX_RELIABLE_HZ = 5500.0
 
 
 def is_broadband(stim_type: str) -> bool:

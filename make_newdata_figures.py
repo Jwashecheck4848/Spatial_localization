@@ -48,6 +48,16 @@ def _broadband_labels() -> list[str]:
             if not k.startswith("_") and v.get("type") == "broadband_noise"]
 
 
+def _nice_log_ticks(values: list[float]) -> list[int]:
+    """Round tick values spanning `values` on a log scale (mirrors the hand-picked
+    [2, 5, 10, 20, 50] ticks in the July study's content_ladder(), but computed from this
+    dataset's actual range instead of hardcoded to one study's numbers)."""
+    candidates = [1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 70, 100, 150, 200, 300, 500]
+    lo, hi = min(values) / 1.3, max(values) * 1.3
+    ticks = [c for c in candidates if lo <= c <= hi]
+    return ticks if len(ticks) >= 3 else candidates
+
+
 def content_ladder(comp: dict, out_png: Path) -> None:
     """Mono -> VBAP slopegraph across every stimulus in the comparison (2-rung analog of the
     July study's 3-rung anechoic/CAVE-physical/CAVE-phantom ladder)."""
@@ -62,6 +72,7 @@ def content_ladder(comp: dict, out_png: Path) -> None:
     with plt.rc_context(PAPER_RC):
         fig, ax = plt.subplots(figsize=(3.6, 3.6))
         finals = []
+        all_y = []
         for i, lab in enumerate(labs):
             c = PALETTE[i % len(PALETTE)]
             m = MARKERS[i % len(MARKERS)]
@@ -70,11 +81,13 @@ def content_ladder(comp: dict, out_png: Path) -> None:
             ys = [rungs[x][0] for x in xs]
             if not xs:
                 continue
+            all_y.extend(ys)
             ax.plot(xs, ys, ls="-", lw=1.2, color=c, zorder=3)
             for x in xs:
                 ci = rungs[x][1]
                 if ci and ci[0] is not None:
                     ax.vlines(x, ci[0], ci[1], lw=0.8, color=c, zorder=3)
+                    all_y.extend(ci)
             ax.plot(xs, ys, ls="none", marker=m, ms=4.5, mfc=c, mec=c, mew=0.7, zorder=4)
             finals.append((ys[-1], lab, c))
 
@@ -87,6 +100,11 @@ def content_ladder(comp: dict, out_png: Path) -> None:
             last_y = y_show
 
         ax.set_yscale("log")
+        ticks = _nice_log_ticks(all_y)
+        ax.set_yticks(ticks)
+        ax.set_yticklabels([str(t) for t in ticks])
+        ax.minorticks_off()
+        ax.set_ylim(min(all_y) / 1.3, max(all_y) * 1.3)
         ax.set_ylabel("median angular miss (\N{DEGREE SIGN})")
         ax.set_xlim(-0.15, 1.75)
         ax.set_xticks([0, 1])
@@ -100,22 +118,32 @@ def content_ladder(comp: dict, out_png: Path) -> None:
     print(f"wrote {out_png}")
 
 
+LOW_N_THRESHOLD = 3  # cells with fewer usable trials than this get flagged, not just colored
+
+
 def miss_map(df_mono, df_vbap, out_png: Path, stim_filter=None, vmax: float = 40.0) -> None:
     """Stacked mono/VBAP per-cell median-miss heatmaps. The (az, el) grid is derived from the
     data itself (unique truth cells actually recorded), not assumed to match the old
-    24-speaker CAVE layout."""
+    24-speaker CAVE layout.
+
+    Cells with zero usable trials are hatched (not left blank) so "no data" is visually
+    distinct from "low error". Cells are also annotated with their trial count n, and any
+    cell with n < LOW_N_THRESHOLD gets a red outline -- a high median miss from 1-2 trials is
+    far more likely to be one bad trial (onset slip, front-back flip) than a real effect, and
+    this makes that distinction visible directly on the figure instead of hiding it."""
 
     def cellmap(df):
         d = _cells(_usable(df))
         if stim_filter:
             d = d[d["stim_label"].isin(stim_filter)]
-        return d.groupby(["cell_az", "cell_el"])["miss_corrected"].median()
+        g = d.groupby(["cell_az", "cell_el"])["miss_corrected"]
+        return g.median(), g.size()
 
     maps = {"CAVE physical (mono)": cellmap(df_mono),
             "CAVE phantom (VBAP)": cellmap(df_vbap)}
     cmap = plt.get_cmap("viridis")
-    all_az = sorted({az for cm in maps.values() for az, _ in cm.index})
-    all_el = sorted({el for cm in maps.values() for _, el in cm.index})
+    all_az = sorted({az for med, _ in maps.values() for az, _ in med.index})
+    all_el = sorted({el for med, _ in maps.values() for _, el in med.index})
     if not all_az or not all_el:
         print(f"[skip] miss_map: no usable cells for {out_png.name}")
         return
@@ -123,20 +151,32 @@ def miss_map(df_mono, df_vbap, out_png: Path, stim_filter=None, vmax: float = 40
     az_w = max(8.0, (az_diffs[0] if az_diffs else 30.0) * 0.9)
     el_diffs = sorted(set(round(b - a, 3) for a, b in zip(all_el, all_el[1:])))
     el_h = max(10.0, (el_diffs[0] if el_diffs else 20.0) * 0.85)
+    low_n_cells = []
 
     with plt.rc_context(PAPER_RC):
         fig, axes = plt.subplots(2, 1, figsize=(7.0, 3.6), sharex=True)
-        for ax, (title, cm) in zip(axes, maps.items()):
+        for ax, (title, (med, cnt)) in zip(axes, maps.items()):
             for az in all_az:
                 for el in all_el:
-                    v = cm.get((az, el))
+                    v = med.get((az, el))
+                    n = int(cnt.get((az, el), 0))
                     if v is None:
+                        ax.add_patch(Rectangle((az - az_w / 2, el - el_h / 2), az_w, el_h,
+                                               fc="white", ec="0.8", lw=0.4, hatch="///",
+                                               zorder=1))
                         continue
+                    low_n = n < LOW_N_THRESHOLD
+                    if low_n:
+                        low_n_cells.append((title, az, el, round(v, 1), n))
                     ax.add_patch(Rectangle((az - az_w / 2, el - el_h / 2), az_w, el_h,
-                                           fc=cmap(min(v, vmax) / vmax), ec="white", lw=0.5,
-                                           zorder=1))
-                    ax.text(az, el, f"{v:.0f}", fontsize=6, ha="center", va="center",
-                            color="white" if v > 0.55 * vmax else "black", zorder=2)
+                                           fc=cmap(min(v, vmax) / vmax),
+                                           ec="#d62728" if low_n else "white",
+                                           lw=1.3 if low_n else 0.5, zorder=1))
+                    txt_color = "white" if v > 0.55 * vmax else "black"
+                    ax.text(az, el + el_h * 0.12, f"{v:.0f}", fontsize=6, ha="center",
+                            va="center", color=txt_color, zorder=2)
+                    ax.text(az, el - el_h * 0.28, f"n={n}", fontsize=4.5, ha="center",
+                            va="center", color=txt_color, alpha=0.85, zorder=2)
             ax.set_xlim(min(all_az) - az_w, max(all_az) + az_w)
             ax.set_ylim(min(all_el) - el_h, max(all_el) + el_h)
             ax.set_ylabel("elevation (\N{DEGREE SIGN})")
@@ -153,6 +193,11 @@ def miss_map(df_mono, df_vbap, out_png: Path, stim_filter=None, vmax: float = 40
         fig.savefig(out_png, dpi=300)
         plt.close(fig)
     print(f"wrote {out_png}")
+    if low_n_cells:
+        print(f"  [note] {len(low_n_cells)} cell(s) outlined red: n < {LOW_N_THRESHOLD} usable "
+              "trial(s), treat their median as unreliable until more data comes in:")
+        for title, az, el, v, n in low_n_cells:
+            print(f"           {title}: az={az} el={el} -> {v}\N{DEGREE SIGN} (n={n})")
 
 
 def build_all(out_base: Path | None = None) -> list[Path]:
