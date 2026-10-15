@@ -45,7 +45,12 @@ import numpy as np
 from scipy.stats import spearmanr, pearsonr
 
 EXP_DIR = Path(__file__).resolve().parent
-R = EXP_DIR / "results"
+# BRANCH legacy-output-redirect: gt_anechoic's cached align.npz files and the room_effect
+# comparison this reads both live under OUT_BASE now, matching compare_conditions.py /
+# paper_stats.py / make_paper_figures.py; this script's own output (spectral_predictor.json)
+# also goes there instead of into zylia_analysis/results.
+OUT_BASE = EXP_DIR.parent / "zylia_legacy_output"
+R = OUT_BASE / "results"
 BAND_HZ = (200.0, 5000.0)
 # stimulus playlist index -> label (6 kHz tone, index 3, excluded a priori)
 STIM = {0: "pink noise", 1: "250 Hz tone", 2: "1000 Hz tone", 4: "phone ringing",
