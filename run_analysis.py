@@ -258,6 +258,17 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
             per_pos.setdefault(t["position"], []).append(t)
         for pid, prows in sorted(per_pos.items()):
             bb = _cal_trials(prows)
+            if not bb and external_calibration is not None:
+                # External mode never FITS anything from these trials (the mount is already
+                # given); it only uses them to report a per-position residual and to decide
+                # `in_calibration` (every externally-calibrated position is trusted -- see
+                # _external_fit's outlier_ids=[] contract). A tone-only recording session (one
+                # clip-log session = one stimulus family) has zero broadband/calibration_label
+                # trials, so without this fallback `bb` is always empty here and every tone
+                # position is silently dropped from `positions` -- never entering inlier_ids,
+                # so every tone trial wrongly reads in_calibration=False. Fall back to any
+                # reliable trial at this position so tone-only sessions aren't excluded.
+                bb = [t for t in prows if t["reliable"]]
             if not bb:
                 continue
             positions.append({"id": pid,
