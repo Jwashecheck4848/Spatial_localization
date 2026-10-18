@@ -4,7 +4,7 @@
   "conditions": {
     "gt_cave": {
       "enabled": true,
-      "data_root": "../Zylia_GroundTruth_Cave",
+      "data_root": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\Zylia_GroundTruth_Cave",
       "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\gt_cave",
       "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\gt_cave",
       "room": "cave",
@@ -18,7 +18,7 @@
     },
     "gt_anechoic": {
       "enabled": true,
-      "data_root": "../Zylia_GroundTruth_Anechoic",
+      "data_root": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\Zylia_GroundTruth_Anechoic",
       "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\gt_anechoic",
       "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\gt_anechoic",
       "room": "anechoic",
@@ -32,7 +32,7 @@
     },
     "vbap": {
       "enabled": true,
-      "data_root": "../Zylia_VBAP_Cave",
+      "data_root": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\Zylia_VBAP_Cave",
       "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\vbap",
       "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\vbap",
       "room": "cave",
@@ -46,7 +46,7 @@
     },
     "vbap_gtmount": {
       "enabled": true,
-      "data_root": "../Zylia_VBAP_Cave",
+      "data_root": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\Zylia_VBAP_Cave",
       "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\results\\vbap_gtmount",
       "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\zylia_legacy_output\\figures\\vbap_gtmount",
       "room": "cave",
