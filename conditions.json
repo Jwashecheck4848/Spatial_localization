@@ -105,7 +105,7 @@
     },
     "pn_s1_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_mono_cc",
       "figures_dir": "figures/pn_s1_mono_cc",
       "room": "cave",
@@ -127,7 +127,7 @@
     },
     "pn_s1_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_mono_co",
       "figures_dir": "figures/pn_s1_mono_co",
       "room": "cave",
@@ -149,7 +149,7 @@
     },
     "pn_s1_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_vbap_cc",
       "figures_dir": "figures/pn_s1_vbap_cc",
       "room": "cave",
@@ -169,7 +169,7 @@
     },
     "pn_s1_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s1_vbap_co",
       "figures_dir": "figures/pn_s1_vbap_co",
       "room": "cave",
@@ -189,7 +189,7 @@
     },
     "pn_s2_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_mono_cc",
       "figures_dir": "figures/pn_s2_mono_cc",
       "room": "cave",
@@ -211,7 +211,7 @@
     },
     "pn_s2_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_mono_co",
       "figures_dir": "figures/pn_s2_mono_co",
       "room": "cave",
@@ -233,7 +233,7 @@
     },
     "pn_s2_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_vbap_cc",
       "figures_dir": "figures/pn_s2_vbap_cc",
       "room": "cave",
@@ -253,7 +253,7 @@
     },
     "pn_s2_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_s2_vbap_co",
       "figures_dir": "figures/pn_s2_vbap_co",
       "room": "cave",
@@ -273,9 +273,9 @@
     },
     "pn_s12_mono_cc": {
       "enabled": true,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\pn_s12_mono_cc",
-      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\pn_s12_mono_cc",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\pn_s12_mono_cc",
+      "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\pn_s12_mono_cc",
       "room": "cave",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -296,9 +296,9 @@
     },
     "pn_s12_vbap_cc": {
       "enabled": true,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\pn_s12_vbap_cc",
-      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\pn_s12_vbap_cc",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\pn_s12_vbap_cc",
+      "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\pn_s12_vbap_cc",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",
@@ -319,9 +319,9 @@
     },
     "newstim_s12_mono_cc": {
       "enabled": true,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\newstim_s12_mono_cc",
-      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\newstim_s12_mono_cc",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\newstim_s12_mono_cc",
+      "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\newstim_s12_mono_cc",
       "room": "cave",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -341,9 +341,9 @@
     },
     "newstim_s12_vbap_cc": {
       "enabled": true,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\newstim_s12_vbap_cc",
-      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\newstim_s12_vbap_cc",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\newstim_s12_vbap_cc",
+      "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\newstim_s12_vbap_cc",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",
@@ -363,7 +363,7 @@
     },
     "pn_outer_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_mono_cc",
       "figures_dir": "figures/pn_outer_mono_cc",
       "room": "cave",
@@ -385,7 +385,7 @@
     },
     "pn_outer_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_mono_co",
       "figures_dir": "figures/pn_outer_mono_co",
       "room": "cave",
@@ -407,7 +407,7 @@
     },
     "pn_outer_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_vbap_cc",
       "figures_dir": "figures/pn_outer_vbap_cc",
       "room": "cave",
@@ -427,7 +427,7 @@
     },
     "pn_outer_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/pn_outer_vbap_co",
       "figures_dir": "figures/pn_outer_vbap_co",
       "room": "cave",
@@ -447,7 +447,7 @@
     },
     "mphon_s1_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_mono_cc",
       "figures_dir": "figures/mphon_s1_mono_cc",
       "room": "cave",
@@ -469,7 +469,7 @@
     },
     "mphon_s1_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_mono_co",
       "figures_dir": "figures/mphon_s1_mono_co",
       "room": "cave",
@@ -491,7 +491,7 @@
     },
     "mphon_s1_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_vbap_cc",
       "figures_dir": "figures/mphon_s1_vbap_cc",
       "room": "cave",
@@ -511,7 +511,7 @@
     },
     "mphon_s1_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s1_vbap_co",
       "figures_dir": "figures/mphon_s1_vbap_co",
       "room": "cave",
@@ -531,7 +531,7 @@
     },
     "mphon_s2_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_mono_cc",
       "figures_dir": "figures/mphon_s2_mono_cc",
       "room": "cave",
@@ -553,7 +553,7 @@
     },
     "mphon_s2_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_mono_co",
       "figures_dir": "figures/mphon_s2_mono_co",
       "room": "cave",
@@ -575,7 +575,7 @@
     },
     "mphon_s2_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_vbap_cc",
       "figures_dir": "figures/mphon_s2_vbap_cc",
       "room": "cave",
@@ -595,7 +595,7 @@
     },
     "mphon_s2_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_s2_vbap_co",
       "figures_dir": "figures/mphon_s2_vbap_co",
       "room": "cave",
@@ -615,7 +615,7 @@
     },
     "mphon_outer_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_mono_cc",
       "figures_dir": "figures/mphon_outer_mono_cc",
       "room": "cave",
@@ -637,7 +637,7 @@
     },
     "mphon_outer_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_mono_co",
       "figures_dir": "figures/mphon_outer_mono_co",
       "room": "cave",
@@ -659,7 +659,7 @@
     },
     "mphon_outer_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_vbap_cc",
       "figures_dir": "figures/mphon_outer_vbap_cc",
       "room": "cave",
@@ -679,7 +679,7 @@
     },
     "mphon_outer_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/mphon_outer_vbap_co",
       "figures_dir": "figures/mphon_outer_vbap_co",
       "room": "cave",
@@ -699,7 +699,7 @@
     },
     "fphon_s1_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_mono_cc",
       "figures_dir": "figures/fphon_s1_mono_cc",
       "room": "cave",
@@ -721,7 +721,7 @@
     },
     "fphon_s1_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_mono_co",
       "figures_dir": "figures/fphon_s1_mono_co",
       "room": "cave",
@@ -743,7 +743,7 @@
     },
     "fphon_s1_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_vbap_cc",
       "figures_dir": "figures/fphon_s1_vbap_cc",
       "room": "cave",
@@ -763,7 +763,7 @@
     },
     "fphon_s1_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s1_vbap_co",
       "figures_dir": "figures/fphon_s1_vbap_co",
       "room": "cave",
@@ -783,7 +783,7 @@
     },
     "fphon_s2_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_mono_cc",
       "figures_dir": "figures/fphon_s2_mono_cc",
       "room": "cave",
@@ -805,7 +805,7 @@
     },
     "fphon_s2_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_mono_co",
       "figures_dir": "figures/fphon_s2_mono_co",
       "room": "cave",
@@ -827,7 +827,7 @@
     },
     "fphon_s2_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_vbap_cc",
       "figures_dir": "figures/fphon_s2_vbap_cc",
       "room": "cave",
@@ -847,7 +847,7 @@
     },
     "fphon_s2_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_s2_vbap_co",
       "figures_dir": "figures/fphon_s2_vbap_co",
       "room": "cave",
@@ -867,9 +867,9 @@
     },
     "fphon_s12_mono_cc": {
       "enabled": true,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\fphon_s12_mono_cc",
-      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\fphon_s12_mono_cc",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\fphon_s12_mono_cc",
+      "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\fphon_s12_mono_cc",
       "room": "cave",
       "render": "real",
       "stim_json": "stimuli.json",
@@ -889,9 +889,9 @@
     },
     "fphon_s12_vbap_cc": {
       "enabled": true,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
-      "results_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\fphon_s12_vbap_cc",
-      "figures_dir": "T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\fphon_s12_vbap_cc",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
+      "results_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\results\\fphon_s12_vbap_cc",
+      "figures_dir": "Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output\\figures\\fphon_s12_vbap_cc",
       "room": "cave",
       "render": "vbap",
       "stim_json": "stimuli.json",
@@ -911,7 +911,7 @@
     },
     "fphon_outer_mono_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_mono_cc",
       "figures_dir": "figures/fphon_outer_mono_cc",
       "room": "cave",
@@ -933,7 +933,7 @@
     },
     "fphon_outer_mono_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_mono_co",
       "figures_dir": "figures/fphon_outer_mono_co",
       "room": "cave",
@@ -955,7 +955,7 @@
     },
     "fphon_outer_vbap_cc": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_vbap_cc",
       "figures_dir": "figures/fphon_outer_vbap_cc",
       "room": "cave",
@@ -975,7 +975,7 @@
     },
     "fphon_outer_vbap_co": {
       "enabled": false,
-      "data_root": "T:\\JordanWashecheck\\Objective Localization",
+      "data_root": "Z:\\JordanWashecheck\\Objective Localization",
       "results_dir": "results/fphon_outer_vbap_co",
       "figures_dir": "figures/fphon_outer_vbap_co",
       "room": "cave",
@@ -1031,5 +1031,5 @@
     }
   ],
   "_excluded_comparisons_note": "Ambisonics comparisons (ambi_vs_gt, ambi_gtmount_vs_gt, vbap_vs_ambi) were removed 2026-07-17: the ambi data has a per-block frame confound (data-collection issue). results/ambi and results/ambi_gtmount are retained on disk for the future provenance investigation but are not wired into any comparison. See memory ambisonics-data-status.",
-  "_baseline_note": "BRANCH newdata-first-pass: isolated baseline run of the new (2026-10) stimulus-family data using the FIRST-PASS analysis code, before the calibration-debugging session on Test (per-rig mounts, elevation-handedness fix, etc.). Only the 6 pooled Setup1+2 conditions (pn_s12_*, fphon_s12_*, newstim_s12_*) are enabled; every other condition (the July gt_cave/gt_anechoic/vbap study and the per-setup s1/s2/outer breakdowns) is disabled for this run. Their results_dir/figures_dir point outside the repo, to T:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output, so this pass never touches the shared results/ and figures/ folders used by other branches/conditions."
+  "_baseline_note": "BRANCH newdata-first-pass: isolated baseline run of the new (2026-10) stimulus-family data using the FIRST-PASS analysis code, before the calibration-debugging session on Test (per-rig mounts, elevation-handedness fix, etc.). Only the 6 pooled Setup1+2 conditions (pn_s12_*, fphon_s12_*, newstim_s12_*) are enabled; every other condition (the July gt_cave/gt_anechoic/vbap study and the per-setup s1/s2/outer breakdowns) is disabled for this run. Their results_dir/figures_dir point outside the repo, to Z:\\JordanWashecheck\\Audio_Localization_Jordan\\newdata_first_pass_output, so this pass never touches the shared results/ and figures/ folders used by other branches/conditions."
 }
