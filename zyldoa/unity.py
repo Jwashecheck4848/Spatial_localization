@@ -94,7 +94,7 @@ def clip_family(csv_name: str) -> str:
 
 def find_clip_log(folder: Path) -> Path:
     """The session's single clip-log CSV (exactly one per folder in the new format)."""
-    hits = sorted(Path(folder).glob("*.csv"))
+    hits = sorted(h for h in Path(folder).glob("*.csv") if not h.name.startswith("."))
     if len(hits) != 1:
         raise FileNotFoundError(
             f"Expected exactly one clip-log CSV in {folder}, found {len(hits)}: "
@@ -115,26 +115,51 @@ def parse_clip_log(folder: Path) -> dict:
     elevation is already referenced to listener ear height; distance is in CENTIMETRES and is
     converted to metres."""
     path = find_clip_log(folder)
-    family = clip_family(path.name)
-    stim_index_val = FAMILY_STIM_INDEX[family]
-    trial, block, onset_s, truth_az, truth_el, truth_r = [], [], [], [], [], []
+    rows = []
     with open(path, newline="") as fh:
-        for i, row in enumerate(csv.DictReader(fh)):
-            trial.append(i)
-            block.append(int(row["SpeakerChannelIndex"]))
-            onset_s.append(float(row["ClipStart"]))
-            truth_az.append(float(row["SourcePositionAzimuth"]) % 360.0)
-            truth_el.append(float(row["SourcePositionElevation"]))
-            truth_r.append(float(row["SourcePositionDistance"]) / 100.0)
-    if not trial:
+        rows = list(csv.DictReader(fh))
+    if not rows:
         raise ValueError(f"No rows in clip log: {path}")
+    # Family from the ClipName COLUMN first (what Unity actually played), filename as fallback:
+    # several CSVs on Teba carry a mismatched filename (e.g. the phone_ringing Setup1 MONO
+    # session's CSV is named '..._Setup1_vbap_CC...').
+    clip_names = {(r.get("ClipName") or "").strip() for r in rows}
+    families = set()
+    for cn in clip_names:
+        try:
+            families.add(clip_family(cn))
+        except ValueError:
+            pass
+    if len(families) == 1:
+        family = families.pop()
+    else:
+        # phonemes: ClipName is the phoneme file ('Ah.wav', 'Ba.wav', ...) -> not decodable
+        # from the clip name, so fall back to the CSV filename / folder name
+        try:
+            family = clip_family(path.name)
+        except ValueError:
+            family = clip_family(Path(folder).name)
+    stim_index_val = FAMILY_STIM_INDEX[family]
+    trial, block, onset_s, clip_dur, truth_az, truth_el, truth_r = [], [], [], [], [], [], []
+    for i, row in enumerate(rows):
+        trial.append(i)
+        block.append(int(row["SpeakerChannelIndex"]))
+        onset_s.append(float(row["ClipStart"]))
+        clip_dur.append(float(row["ClipEnd"]) - float(row["ClipStart"]))
+        truth_az.append(float(row["SourcePositionAzimuth"]) % 360.0)
+        truth_el.append(float(row["SourcePositionElevation"]))
+        truth_r.append(float(row["SourcePositionDistance"]) / 100.0)
+    source_types = sorted({(r.get("SourceType") or "").strip() for r in rows})
     return {
         "trial": np.array(trial, dtype=int),
         "block": np.array(block, dtype=int),
         "onset_unity_s": np.array(onset_s, dtype=float),
+        "clip_dur_s": np.array(clip_dur, dtype=float),
         "stim_index": np.full(len(trial), stim_index_val, dtype=int),
         "truth_az": np.array(truth_az, dtype=float),
         "truth_el": np.array(truth_el, dtype=float),
         "truth_r": np.array(truth_r, dtype=float),
         "family": family,
+        "source_type": "+".join(source_types),
+        "speaker_channel": np.array([int(r["SpeakerChannel"]) for r in rows], dtype=int),
     }

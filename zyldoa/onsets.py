@@ -6,17 +6,31 @@ onset even if a few bursts are missed. Onsets are refined to the local rising ed
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from .wavio import ZyliaWav
 
 
-def compute_envelope(wav: ZyliaWav, hop: int = 256, ref_channels=None) -> tuple[np.ndarray, float]:
-    """Broadband RMS envelope of the channel-mean signal. Returns (env, env_rate_hz)."""
+def compute_envelope(wav: ZyliaWav, hop: int = 256, ref_channels=None,
+                     mode: str = "mean") -> tuple[np.ndarray, float]:
+    """Broadband RMS envelope. Returns (env, env_rate_hz).
+
+    mode="mean"  (legacy): RMS of the channel-MEAN signal. Above ~1.5 kHz the 19 capsules sit
+                 at very different phases on the 98 mm sphere, so averaging the channels
+                 cancels most of the signal (a 5 kHz tone almost vanishes from this envelope).
+    mode="power": sqrt(mean over channels of x^2) -- no inter-capsule cancellation; used by the
+                 clip-log schedule aligner (`align_schedule`)."""
     chunk = (1 << 20) // hop * hop  # multiple of hop
     env_parts, carry = [], np.zeros(0, dtype=np.float32)
     for _, block in wav.iter_chunks(chunk):
-        mono = block.mean(axis=1) if ref_channels is None else block[:, ref_channels].mean(axis=1)
+        blk = block if ref_channels is None else block[:, ref_channels]
+        if mode == "power":
+            # mean square across channels; sqrt after the frame average below gives frame RMS
+            mono = np.sqrt((blk.astype(np.float64) ** 2).mean(axis=1))
+        else:
+            mono = blk.mean(axis=1)
         mono = np.concatenate([carry, mono])
         n = (len(mono) // hop) * hop
         carry = mono[n:]
@@ -183,4 +197,216 @@ def align_trials(wav: ZyliaWav, unity_onsets: np.ndarray, blocks: np.ndarray,
         "env": env,
         "env_rate": env_rate,
         "bursts_s": bursts,
+    }
+
+
+# ---------------------------------------------------------------------------------------------
+# Clip-log (2026-09+) sessions: global schedule alignment.
+#
+# The new Unity clip log plays every trial on a strictly periodic schedule (one clip every
+# 3.2 s for the 200 ms stimuli, ~3.46 s for phonemes) with NO pause between speaker positions.
+# `align_trials` above anchors the absolute offset on inter-block silences (> 4 s) and on the
+# first detected burst; with no silences it falls back to "first detected burst == trial 0",
+# and its burst detector (tuned for ~1 s stimuli) misses many 200 ms bursts. The per-block
+# energy search is then ambiguous modulo one inter-trial interval, so whole sessions were
+# mapped N trials late (N = 0..11 observed, and one session entirely past the end of the WAV):
+# every trial inherited the truth position of a different trial. The aligner below instead
+# fits ONE clock map (scale, offset) for the whole schedule by counting how many of the logged
+# trials land on real sound, resolves the residual whole-trial ambiguity explicitly, refines
+# each onset to its rising edge, and reports how decisive the solution was.
+# ---------------------------------------------------------------------------------------------
+
+def _cum_power(env: np.ndarray) -> np.ndarray:
+    return np.concatenate([[0.0], np.cumsum(np.asarray(env, np.float64) ** 2)])
+
+
+def _win_db(cum: np.ndarray, i0, i1) -> np.ndarray:
+    """dB of the mean envelope power over envelope-sample windows [i0, i1)."""
+    n = len(cum) - 1
+    i0 = np.clip(np.asarray(i0), 0, n)
+    i1 = np.clip(np.asarray(i1), 0, n)
+    i1 = np.maximum(i1, i0 + 1)
+    i1 = np.minimum(i1, n)
+    i0 = np.minimum(i0, i1 - 1)
+    return 10.0 * np.log10((cum[i1] - cum[i0]) / (i1 - i0) + 1e-20)
+
+
+def onset_contrast_curve(env: np.ndarray, env_rate: float, post_s=(0.01, 0.15),
+                         pre_s=(-0.60, -0.10)) -> np.ndarray:
+    """C[j] = dB(mean power just after j) - dB(mean power before j), for every envelope
+    sample j: large where a stimulus starts at j. Pre-window ends 0.1 s before the onset so
+    the previous trial's reverberant tail (>= 3 s earlier) never matters."""
+    cum = _cum_power(env)
+    j = np.arange(len(env))
+    post = _win_db(cum, j + int(round(post_s[0] * env_rate)), j + int(round(post_s[1] * env_rate)))
+    pre = _win_db(cum, j + int(round(pre_s[0] * env_rate)), j + int(round(pre_s[1] * env_rate)))
+    valid = (j + pre_s[0] * env_rate >= 0) & (j + post_s[1] * env_rate < len(env))
+    return np.where(valid, post - pre, -np.inf)
+
+
+def _count_on_sound(C: np.ndarray, env_rate: float, t: np.ndarray, thr_db: float):
+    idx = np.round(np.asarray(t) * env_rate).astype(np.int64)
+    inside = (idx >= 0) & (idx < len(C))
+    c = np.full(len(idx), -np.inf)
+    c[inside] = C[idx[inside]]
+    return c, c > thr_db
+
+
+def align_schedule_env(env: np.ndarray, env_rate: float, unity_onsets: np.ndarray,
+                       blocks: np.ndarray | None = None, clip_dur_s: np.ndarray | None = None,
+                       max_drift: float = 0.003, thr_db: float = 6.0,
+                       max_shift_trials: int = 20) -> dict:
+    """Align a periodic Unity clip schedule to a recording envelope.
+
+    1. Coarse global search over clock scale (+/- max_drift) and offset (whole recording):
+       maximize the number of logged trials whose onset lands on a >= thr_db energy rise
+       (ties broken by mean contrast). Trials mapped outside the recording count as misses,
+       so a solution shifted by k trials loses k trials at one end.
+    2. Explicit whole-trial ambiguity check: re-score offset + k*ITI for |k| <= max_shift_trials.
+       Among the best counts, prefer the shift whose per-position-block levels are most uniform
+       (each block is one speaker at one distance, so its trials share a level; a shifted
+       labelling straddles block boundaries).
+    3. Refine every trial onset to the steepest rising edge within +/- 60 ms of the prediction.
+
+    Returns onset times (s) plus a `qc` dict: n_on_sound, shift margin (how many more trials
+    the chosen solution explains than the next-best whole-trial shift), and `ambiguous`."""
+    u = np.asarray(unity_onsets, float)
+    n = len(u)
+    if blocks is None:
+        blocks = np.zeros(n, int)
+    min_dur = float(np.min(clip_dur_s)) if clip_dur_s is not None and len(clip_dur_s) else 0.2
+    post_len = float(np.clip(min_dur - 0.02, 0.04, 0.15))
+    C = onset_contrast_curve(env, env_rate, post_s=(0.01, post_len))
+    T = len(env) / env_rate
+    span = u[-1] - u[0]
+
+    # --- 1. coarse grid (offset step = 4 envelope samples ~ 21 ms at 187.5 Hz) -------------
+    step = 4
+    best = (-np.inf, 1.0, 0.0)
+    Cs = np.where(np.isfinite(C), np.clip(C, -20, 40), -20.0)
+    hit = np.isfinite(C) & (C > thr_db)
+    for scale in np.arange(1.0 - max_drift, 1.0 + max_drift + 1e-12, 2e-4):
+        # offsets such that trial 0 maps anywhere from "schedule ends at t=0" to "starts at T"
+        o_lo, o_hi = -span * scale - u[0] * scale, T - u[0] * scale
+        k0 = int(np.floor(o_lo * env_rate)); k1 = int(np.ceil(o_hi * env_rate))
+        ks_all = np.arange(k0, k1 + 1, step)
+        base = np.round(u * scale * env_rate).astype(np.int64)
+        for c0 in range(0, len(ks_all), 4096):          # chunked: bounded memory
+            ks = ks_all[c0:c0 + 4096]
+            idx = ks[:, None] + base[None, :]
+            inside = (idx >= 0) & (idx < len(C))
+            idc = np.clip(idx, 0, len(C) - 1)
+            cnt = (hit[idc] & inside).sum(axis=1)
+            mean_c = np.where(inside, Cs[idc], -20.0).mean(axis=1)
+            score = cnt + mean_c / 1000.0
+            i = int(np.argmax(score))
+            if score[i] > best[0]:
+                best = (float(score[i]), float(scale), float(ks[i] / env_rate))
+    _, scale, off = best
+
+    # --- fine refinement around the coarse optimum ------------------------------------------
+    best_f = (-np.inf, scale, off)
+    for sc in np.arange(scale - 2.4e-4, scale + 2.4e-4 + 1e-12, 2e-5):
+        for o in off + np.arange(-6, 7) / env_rate:
+            c, h = _count_on_sound(C, env_rate, u * sc + o, thr_db)
+            s = h.sum() + np.where(np.isfinite(c), np.clip(c, -20, 40), -20).mean() / 1000.0
+            if s > best_f[0]:
+                best_f = (float(s), float(sc), float(o))
+    _, scale, off = best_f
+
+    # --- 2. whole-trial ambiguity --------------------------------------------------------------
+    iti = float(np.median(np.diff(u))) * scale if n > 1 else 0.0
+    cum = _cum_power(env)
+    lvl_post = int(round(post_len * env_rate))
+
+    def _shift_stats(k):
+        t = u * scale + off + k * iti
+        c, h = _count_on_sound(C, env_rate, t, thr_db)
+        idx = np.round(t * env_rate).astype(np.int64)
+        lv = _win_db(cum, idx + 1, idx + 1 + lvl_post)
+        disp = 0.0
+        for b in np.unique(blocks):
+            m = (blocks == b) & h
+            if m.sum() >= 2:
+                disp += float(np.var(lv[m]) * m.sum())
+        disp /= max(1, int(h.sum()))
+        return int(h.sum()), disp
+
+    shifts = list(range(-max_shift_trials, max_shift_trials + 1)) if iti > 0 else [0]
+    stats = {k: _shift_stats(k) for k in shifts}
+    top = max(v[0] for v in stats.values())
+    tied = [k for k, v in stats.items() if v[0] == top]
+    k_best = min(tied, key=lambda k: stats[k][1])
+    off = off + k_best * iti
+    others = [v[0] for k, v in stats.items() if k != k_best]
+    margin = top - (max(others) if others else 0)
+    disp_best = stats[k_best][1]
+    disp_next = min((stats[k][1] for k in tied if k != k_best), default=None)
+
+    # --- 3. per-trial rising-edge refinement ----------------------------------------------------
+    edge = onset_contrast_curve(env, env_rate, post_s=(0.0, 0.03), pre_s=(-0.06, -0.005))
+    pred = u * scale + off
+    onset = pred.copy()
+    w = int(round(0.06 * env_rate))
+    for i, t in enumerate(pred):
+        j0 = int(round(t * env_rate))
+        lo, hi = max(0, j0 - w), min(len(edge), j0 + w + 1)
+        if hi - lo < 3:
+            continue
+        seg = edge[lo:hi]
+        j = int(np.argmax(seg))
+        if np.isfinite(seg[j]) and seg[j] > 3.0:
+            onset[i] = (lo + j) / env_rate
+    c_final, h_final = _count_on_sound(C, env_rate, onset, thr_db)
+
+    n_on = int(h_final.sum())
+    ambiguous = bool(margin < 1 and (disp_next is None or disp_next <= 1.5 * disp_best))
+    qc = {"scale": round(scale, 6), "offset_s": round(off, 4), "iti_s": round(iti, 4),
+          "n_trials": int(n), "n_on_sound": n_on, "shift_margin_trials": int(margin),
+          "block_level_dispersion_db2": round(disp_best, 3),
+          "next_tied_dispersion_db2": (round(disp_next, 3) if disp_next is not None else None),
+          "ambiguous": ambiguous,
+          "onset_refine_median_ms": round(float(np.median(np.abs(onset - pred))) * 1000, 1)}
+    return {"onset_s": onset, "contrast_db": c_final, "on_sound": h_final, "qc": qc}
+
+
+def align_schedule(wav: ZyliaWav, unity_onsets: np.ndarray, blocks: np.ndarray,
+                   clip_dur_s: np.ndarray | None = None, env_hop: int | None = None,
+                   min_on_sound_frac: float = 0.9) -> dict:
+    """`align_trials`-compatible wrapper of `align_schedule_env` for clip-log sessions.
+
+    Uses the channel-POWER envelope (no inter-capsule cancellation, so the 5 kHz tone and weak
+    VBAP renders stay visible). Prints a loud warning when the alignment is ambiguous or when
+    fewer than `min_on_sound_frac` of the logged trials land on sound -- those sessions must be
+    inspected (onset figure) before their numbers are trusted."""
+    if env_hop is None:                      # ~5.3 ms envelope resolution at any sample rate
+        env_hop = max(16, int(round(wav.sample_rate / 187.5)))
+    env, env_rate = compute_envelope(wav, hop=env_hop, mode="power")
+    res = align_schedule_env(env, env_rate, unity_onsets, blocks=blocks, clip_dur_s=clip_dur_s)
+    onset_s = res["onset_s"]
+    qc = res["qc"]
+    name = getattr(wav, "path", "")
+    if qc["ambiguous"] or qc["n_on_sound"] < min_on_sound_frac * qc["n_trials"]:
+        print(f"  [ALIGNMENT WARNING] {Path(name).parent.name if name else ''}: "
+              f"{qc['n_on_sound']}/{qc['n_trials']} trials on sound, whole-trial shift margin "
+              f"{qc['shift_margin_trials']} -> check the onsets figure before trusting this session")
+    uniq = np.unique(blocks)
+    u = np.asarray(unity_onsets, float)
+    block_off = {int(b): float(np.median(onset_s[blocks == b] - u[blocks == b])) for b in uniq}
+    block_conf = {int(b): float(np.mean(res["on_sound"][blocks == b])) for b in uniq}
+    bursts = onset_s[res["on_sound"]]
+    return {
+        "n_bursts_detected": int(res["on_sound"].sum()),
+        "block_offsets": block_off,
+        "block_offset_confidence": block_conf,
+        "block_repaired": {int(b): False for b in uniq},
+        "nearest_burst_s": np.where(res["on_sound"], 0.0, np.nan),
+        "onset_samples": np.round(onset_s * wav.sample_rate).astype(np.int64),
+        "onset_s": onset_s,
+        "env": env,
+        "env_rate": env_rate,
+        "bursts_s": bursts,
+        "on_sound": res["on_sound"],
+        "contrast_db": res["contrast_db"],
+        "alignment_qc": qc,
     }

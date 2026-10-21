@@ -26,7 +26,7 @@ def _psd(x: np.ndarray, sr: int, nperseg: int = 8192) -> tuple[np.ndarray, np.nd
     return f, p
 
 
-def block_spectrum(wav: ZyliaWav, onset_samples: np.ndarray, sr: int) -> tuple:
+def block_spectrum(wav: ZyliaWav, onset_samples: np.ndarray, sr: int, win=ANALYSIS_WIN) -> tuple:
     """Average PSD over the given trials of one block.
 
     Windows clipped by the end of the recording produce shorter Welch grids; only the
@@ -34,7 +34,7 @@ def block_spectrum(wav: ZyliaWav, onset_samples: np.ndarray, sr: int) -> tuple:
     stack (callers should already exclude truncated trials)."""
     out = []
     for s in onset_samples:
-        w = trial_window(wav, int(s))
+        w = trial_window(wav, int(s), win=win)
         if len(w) >= 64:
             out.append(_psd(w, sr))
     if not out:
@@ -131,14 +131,14 @@ def tonal_consistency(wav: ZyliaWav, onset_samples: np.ndarray, win=ANALYSIS_WIN
 
 
 def identify_blocks(wav: ZyliaWav, onset_samples: np.ndarray, blocks: np.ndarray,
-                    trials_per_block: int = 8) -> dict:
+                    trials_per_block: int = 8, win=ANALYSIS_WIN) -> dict:
     """Per-block stimulus identity + averaged spectrum (for plotting/classification)."""
     out = {}
     for b in np.unique(blocks):
         idx = np.where(blocks == b)[0]
         sub = idx[np.linspace(0, len(idx) - 1, min(trials_per_block, len(idx))).astype(int)]
-        f, psd = block_spectrum(wav, onset_samples[sub], wav.sample_rate)
-        tc = tonal_consistency(wav, onset_samples[sub])
+        f, psd = block_spectrum(wav, onset_samples[sub], wav.sample_rate, win=win)
+        tc = tonal_consistency(wav, onset_samples[sub], win=win)
         info = classify_spectrum(f, psd, tonal_consistency=tc)
         info["block"] = int(b)
         info["n_trials"] = int(len(idx))

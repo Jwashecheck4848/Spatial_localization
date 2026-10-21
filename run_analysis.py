@@ -200,6 +200,7 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
         stim_classification: dict | None = None,
         calibration_label: str | None = None,
         mount_model: str = "auto",
+        tol_deg: float = 15.0,
         per_session: bool = False,
         only: str | list[str] | None = None,
         exclude: str | list[str] | None = None,
@@ -262,7 +263,11 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
                 t["truth_az"] = float(t["trial_truth_az"])
                 t["truth_el"] = float(t["trial_truth_el"])
                 t["radius_m"] = float(t["trial_truth_r"])
-                t["position"] = f"{meta['folder']}|az{t['truth_az']:g}"
+                # Position = one physical/phantom source within one session. MUST include the
+                # elevation: clip-log sessions place two speakers at the same azimuth (e.g.
+                # az 30 at el -20 AND el 0), and an azimuth-only key silently merged them into
+                # one "position" (mixing their DOAs, truth taken from whichever came first).
+                t["position"] = f"{meta['folder']}|az{t['truth_az']:g}|el{t['truth_el']:g}"
             else:
                 if gt["azimuth_deg"] is None:
                     raise SystemExit(f"{meta['folder']}: packed session without per-trial "
@@ -327,16 +332,16 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
         per_session_cals = {}
         inlier_ids = set()
         for sess, ps in sorted(sess_positions.items()):
-            sfit = calibrate.select_mount_fit(ps, mount_model)
+            sfit = calibrate.select_mount_fit(ps, mount_model, tol_deg=tol_deg)
             per_session_cals[sess] = sfit["calibration"]
             inlier_ids |= set(sfit["inlier_ids"])
-        fit = calibrate.select_mount_fit(positions, mount_model)  # global fit: summary/diagnostic only
+        fit = calibrate.select_mount_fit(positions, mount_model, tol_deg=tol_deg)  # global fit: summary/diagnostic only
     elif external_calibration_per_rig is not None:
         fit = _external_fit_per_rig(external_calibration_per_rig, positions)
         inlier_ids = set(fit["inlier_ids"])
     else:
         fit = (_external_fit(external_calibration, positions) if external_calibration is not None
-               else calibrate.select_mount_fit(positions, mount_model))
+               else calibrate.select_mount_fit(positions, mount_model, tol_deg=tol_deg))
         inlier_ids = set(fit["inlier_ids"])
     cal = fit["calibration"]
     mount_by_day = (calibrate.fit_by_group(positions, day_of)
@@ -381,6 +386,14 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
         summary["per_rig_mounts"] = summary["per_session_mounts"]
         summary["calibration_note"] = ("mount fit and applied per rig/session; global "
                                         "mount in 'mounting' is diagnostic only")
+    summary["alignment_qc"] = {m["folder"]: m.get("alignment_qc") for m in metas if m.get("alignment_qc")}
+    summary["label_shift_audit"] = label_shift_audit(combined)
+    for f, a in summary["label_shift_audit"].items():
+        if a.get("suspect"):
+            print(f"  [LABEL-SHIFT WARNING] {f}: trial labels look shifted -- within-position "
+                  f"scatter by shift {a['scatter_deg']}, rigid-fit residual by shift "
+                  f"{a['rigid_fit_resid_by_shift_deg']} (k=0 should be smallest). Inspect the "
+                  "onsets figure before trusting this session.")
     summary["signal_quality"] = quality.aggregate(per_quality)
     summary["signal_quality"]["capsules_excluded_by_session"] = {
         f: bad for f, bad in exclude_map.items() if bad}
@@ -408,6 +421,81 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
 
     print_report(summary)
     return summary
+
+
+def label_shift_audit(combined: list[dict], max_shift: int = 3) -> dict:
+    """Independent check of trial->truth labelling, using the DOAs themselves.
+
+    Within one session each speaker position is played for a run of consecutive trials, and
+    consecutive positions are >= 30 deg apart. If the audio-to-log alignment is off by k
+    trials, every position's group mixes trials from its neighbour and the within-position
+    DOA scatter jumps. For each session we recompute the median within-position scatter with
+    the labels shifted by k = -max_shift..max_shift; the correct alignment is k = 0. A session
+    whose scatter is clearly lower at some k != 0 is flagged `suspect`."""
+    out = {}
+    by_folder: dict[str, list] = {}
+    for r in combined:
+        by_folder.setdefault(r["folder"], []).append(r)
+    for folder, rows in by_folder.items():
+        rows = sorted(rows, key=lambda r: int(r["trial"]))
+        if len(rows) < 20:
+            continue
+        lab = [(float(r["truth_az"]), float(r["truth_el"])) for r in rows]
+        u = calibrate._azel_to_unit([float(r["doa_az"]) for r in rows], [float(r["doa_el"]) for r in rows])
+        rel = np.array([bool(r["reliable"]) for r in rows])
+        sc = {}
+        for k in range(-max_shift, max_shift + 1):
+            groups: dict = {}
+            for i in range(len(rows)):
+                j = i + k
+                if 0 <= j < len(rows) and rel[i]:
+                    groups.setdefault(lab[j], []).append(u[i])
+            dev = []
+            for g in groups.values():
+                if len(g) < 3:
+                    continue
+                g = np.array(g); c = g.mean(axis=0); c /= (np.linalg.norm(c) + 1e-12)
+                dev += list(np.degrees(np.arccos(np.clip(g @ c, -1, 1))))
+            sc[str(k)] = round(float(np.median(dev)), 2) if dev else None
+        valid = {int(k): v for k, v in sc.items() if v is not None}
+        if 0 not in valid:
+            continue
+        best = min(valid, key=valid.get)
+        suspect = best != 0 and valid[best] < 0.8 * valid[0]
+        # Whole-BLOCK shifts (labels off by exactly one position run, e.g. 10 trials) keep each
+        # group internally consistent, so the scatter test above cannot see them. A mount-free
+        # check catches them: fit one orthogonal transform (Procrustes, reflection allowed for
+        # the clockwise-vs-counter-clockwise azimuth convention) from per-position mean DOA to
+        # truth under each candidate block shift. The true labelling gives a small residual.
+        runs = [len(list(g)) for _, g in __import__("itertools").groupby(lab)]
+        blk = int(np.median(runs)) if runs else 0
+        fit_resid = {}
+        if blk >= 2:
+            for kb in (-2, -1, 0, 1, 2):
+                k = kb * blk
+                groups = {}
+                for i in range(len(rows)):
+                    j = i + k
+                    if 0 <= j < len(rows) and rel[i]:
+                        groups.setdefault(lab[j], []).append(u[i])
+                keys = [g for g in groups if len(groups[g]) >= 3]
+                if len(keys) < 4:
+                    continue
+                M = np.array([np.mean(groups[g], axis=0) for g in keys])
+                M /= np.linalg.norm(M, axis=1, keepdims=True)
+                Tm = calibrate._azel_to_unit([g[0] for g in keys], [g[1] for g in keys])
+                Uu, _, Vt = np.linalg.svd(M.T @ Tm)
+                Rm = (Uu @ Vt).T
+                res = np.degrees(np.arccos(np.clip(np.sum((M @ Rm.T) * Tm, axis=1), -1, 1)))
+                fit_resid[str(k)] = round(float(np.median(res)), 2)
+        block_suspect = False
+        if "0" in fit_resid and len(fit_resid) > 1:
+            other = min(v for k, v in fit_resid.items() if k != "0")
+            block_suspect = other < 0.7 * fit_resid["0"] and fit_resid["0"] > 8.0
+        out[folder] = {"scatter_deg": sc, "best_shift": int(best),
+                       "block_len": blk, "rigid_fit_resid_by_shift_deg": fit_resid,
+                       "suspect": bool(suspect or block_suspect)}
+    return out
 
 
 def _pos_label(r):
@@ -586,8 +674,8 @@ def _prune_stale_artifacts(current_tags: set, results_dir: Path, figures_dir: Pa
 def _write_master_csv(path: Path, rows: list[dict]) -> None:
     import csv
     cols = ["folder", "position", "trial", "block", "stim_index", "stim_type", "stim_label",
-            "stim_hz", "truth_az", "truth_el", "radius_m", "onset_s", "inband_snr_db",
-            "reliable", "in_calibration",
+            "stim_hz", "truth_az", "truth_el", "radius_m", "onset_s", "win_start_s", "win_end_s",
+            "inband_snr_db", "reliable", "in_calibration",
             "doa_az", "doa_el", "doa_az_cal", "doa_el_cal", "miss_raw", "miss_corrected"]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
@@ -627,6 +715,8 @@ def load_condition(name: str, conditions_file: Path | str = "conditions.json") -
         kwargs["stim_classification"] = json.loads(_resolve(c["stim_json"]).read_text(encoding="utf-8"))
     cal = c.get("calibration", {})
     kwargs["mount_model"] = cal.get("mount_model", "auto")
+    if "tol_deg" in cal:
+        kwargs["tol_deg"] = float(cal["tol_deg"])
     kwargs["per_session"] = cal.get("per_session", False)
     if cal.get("mode") == "external":
         src = conds[cal["source"]]

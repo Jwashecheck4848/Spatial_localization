@@ -213,6 +213,29 @@ for name, s in summaries.items():
         display(Markdown(f"- `{sess}`: " + "; ".join(issues[:4])))
 """)
 code(r"""
+# Trial-alignment QC (clip-log sessions). Every number downstream depends on each trial being
+# matched to the right speaker position. `alignment_qc` comes from the global schedule aligner
+# (onsets.align_schedule): n_on_sound should equal n_trials (180) and shift_margin >= 1.
+# `label_shift_audit` is an independent check from the DOAs themselves: within-position
+# scatter and a mount-free rigid-fit residual must be smallest at shift 0. Any `suspect`
+# session must be inspected (its *_onsets.png figure) before its numbers are used.
+rows = []
+for name, s in summaries.items():
+    for sess, q in (s.get("alignment_qc") or {}).items():
+        a = (s.get("label_shift_audit") or {}).get(sess, {})
+        rows.append({"condition": name, "session": sess, "n_on_sound": q.get("n_on_sound"),
+                     "n_trials": q.get("n_trials"), "shift_margin": q.get("shift_margin_trials"),
+                     "ambiguous": q.get("ambiguous"), "audit_suspect": a.get("suspect"),
+                     "scatter_by_shift": a.get("scatter_deg"),
+                     "rigid_resid_by_shift": a.get("rigid_fit_resid_by_shift_deg")})
+if rows:
+    qc = pd.DataFrame(rows)
+    display(qc)
+    bad = qc[(qc.n_on_sound < 0.9 * qc.n_trials) | qc.ambiguous | qc.audit_suspect.fillna(False)]
+    display(Markdown(f"**{len(bad)} session(s) need a look** (weak/ambiguous alignment or audit flag)"
+                     if len(bad) else "**All sessions aligned cleanly.**"))
+""")
+code(r"""
 # Estimator cross-check: SH-domain SRP(-PHAT) vs the production intensity estimator on a
 # sample of reliable pink-noise trials per condition. Large systematic disagreement on
 # healthy broadband trials would indicate an estimator artifact; agreement (within the
@@ -236,7 +259,9 @@ for name in summaries:
         wav = _open(folder); sr = wav.sample_rate
         onset_of = dict(zip(npz["trial"].tolist(), npz["onset_samples"].tolist()))
         for _, row in grp.iterrows():
-            seg = wav.read(int(onset_of[int(row.trial)]) + int(0.10 * sr), int(0.30 * sr))
+            w0 = float(row.win_start_s) if "win_start_s" in row and pd.notna(row.win_start_s) else 0.10
+            w1 = float(row.win_end_s) if "win_end_s" in row and pd.notna(row.win_end_s) else 0.40
+            seg = wav.read(int(onset_of[int(row.trial)]) + int(w0 * sr), int((w1 - w0) * sr))
             saz, sel = _doa.srp_doa(seg, sr, phat=True)
             a = _geo.azel_to_unit(row.doa_az, row.doa_el); b = _geo.azel_to_unit(saz, sel)
             diffs.append(float(np.degrees(np.arccos(np.clip(a @ b, -1, 1)))))

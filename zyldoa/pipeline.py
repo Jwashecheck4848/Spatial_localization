@@ -19,7 +19,8 @@ from .wavio import ZyliaWav, open_recording
 from . import unity, onsets, stimid, doa, geometry
 
 ANALYSIS_WIN = (0.10, 0.40)  # seconds after onset: inside the gated stimuli
-CACHE_SCHEMA = 3  # v3: single clip-log CSV per session (unity.parse_clip_log); v1/v2 caches are stale
+CACHE_SCHEMA = 4  # v4: global schedule alignment (onsets.align_schedule) -- v1-v3 caches carry
+                  # whole-trial-shifted onsets for clip-log sessions and MUST NOT be reused
 
 # Speech and the telephone ring have variable / intermittent envelopes, so the fixed early
 # window frequently lands on a quiet portion and the trial fails the SNR gate even though the
@@ -37,6 +38,18 @@ ADAPTIVE_SNR_DB = 6.0  # match run_analysis.RELIABLE_SNR_DB
 # leave the recording (e.g. the Zylia was stopped before the session finished) cannot be
 # analysed and is marked truncated instead of crashing the spectra/DOA stages.
 TRIAL_PRE_S, TRIAL_POST_S = 0.45, 0.55
+
+
+# Analysis window for clip-log trials, from each trial's OWN logged duration (ClipEnd -
+# ClipStart): skip the first 20 ms (onset transient) and stop 20 ms before the clip ends, so
+# neither the DOA nor the SNR gate ever integrates post-stimulus silence/reverberation. Every
+# new-format stimulus is short (200 ms bursts incl. PINK NOISE; phonemes 0.32-0.53 s), so the
+# legacy fixed 0.10-0.40 s window (tuned for ~1 s July clips) must not be used for them.
+CLIP_WIN_LEAD_S, CLIP_WIN_TAIL_S, CLIP_WIN_MIN_S = 0.02, 0.02, 0.05
+
+
+def clip_window(dur_s: float) -> tuple[float, float]:
+    return (CLIP_WIN_LEAD_S, max(CLIP_WIN_LEAD_S + CLIP_WIN_MIN_S, float(dur_s) - CLIP_WIN_TAIL_S))
 
 
 def complete_trials_mask(onset_samples, sample_rate: float, n_frames: int) -> np.ndarray:
@@ -73,7 +86,10 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
     truth_az, truth_el, truth_r = log["truth_az"], log["truth_el"], log["truth_r"]
 
     wav = open_recording(folder)
-    al = onsets.align_trials(wav, log["onset_unity_s"], blocks)
+    # Clip-log sessions run on a strictly periodic schedule with no inter-block pauses, which
+    # the legacy per-block aligner (`onsets.align_trials`) cannot place: it anchored whole
+    # sessions 1-11+ trials late. Use the global schedule aligner instead.
+    al = onsets.align_schedule(wav, log["onset_unity_s"], blocks, clip_dur_s=log["clip_dur_s"])
     osamp = al["onset_samples"]
     complete = complete_trials_mask(osamp, wav.sample_rate, wav.n_frames)
     if not complete.all():
@@ -82,7 +98,9 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
               f"{osamp.max() / wav.sample_rate:.1f} s)")
     if not complete.any():
         raise ValueError(f"{folder.name}: no complete trials inside the recording")
-    ident = stimid.identify_blocks(wav, osamp[complete], stim_index[complete])
+    # QC spectra from INSIDE the clip (the legacy 0.15-0.55 s window sits after a 200 ms clip)
+    spec_win = clip_window(float(np.min(log["clip_dur_s"])))
+    ident = stimid.identify_blocks(wav, osamp[complete], stim_index[complete], win=spec_win)
     wav.close()
 
     meta = {
@@ -96,6 +114,8 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
         "block_repaired": al["block_repaired"],
         "block_info": {int(b): ident[b]["info"] for b in ident},
         "has_trial_truth": bool(np.isfinite(truth_az).any()),
+        "source_type": log["source_type"],
+        "alignment_qc": al["alignment_qc"],
         "npz_path": str(npz_path),
     }
     meta_path.write_text(json.dumps(meta, indent=2))
@@ -103,6 +123,8 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
         npz_path, env=al["env"], env_rate=al["env_rate"], onset_samples=osamp,
         onset_s=al["onset_s"], bursts_s=al["bursts_s"], blocks=blocks, trial=log["trial"],
         stim_index=stim_index, truth_az=truth_az, truth_el=truth_el, truth_r=truth_r,
+        clip_dur_s=log["clip_dur_s"], on_sound=al["on_sound"], contrast_db=al["contrast_db"],
+        speaker_channel=log["speaker_channel"],
         block_freqs=ident[next(iter(ident))]["freqs"],
         block_psd=np.array([ident[b]["psd"] for b in sorted(ident)]),
         block_ids=np.array(sorted(ident)),
@@ -161,9 +183,10 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
         with open(csv_path, newline="") as f:
             rows = list(csv.DictReader(f))
         if rows and "stim_index" in rows[0] \
-                and rows[0].get("capsules_excluded", "") == excl_str:
+                and rows[0].get("capsules_excluded", "") == excl_str \
+                and str(rows[0].get("cache_schema", "")) == str(CACHE_SCHEMA):
             return rows
-        # v1 cache (pre stim_index) or exclusion set changed: recompute below
+        # stale cache (older schema = possibly shifted alignment) or exclusion set changed
 
     npz = np.load(results_dir / f"{tag}_align.npz")
     osamp = npz["onset_samples"]; blocks = npz["blocks"]; onset_s = npz["onset_s"]; trial = npz["trial"]
@@ -171,6 +194,7 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
     t_az = npz["truth_az"] if "truth_az" in npz.files else np.full(len(blocks), np.nan)
     t_el = npz["truth_el"] if "truth_el" in npz.files else np.full(len(blocks), np.nan)
     t_r = npz["truth_r"] if "truth_r" in npz.files else np.full(len(blocks), np.nan)
+    clip_dur = npz["clip_dur_s"] if "clip_dur_s" in npz.files else None
     wav = open_recording(folder)
     complete = complete_trials_mask(osamp, wav.sample_rate, wav.n_frames)
     mask = None
@@ -185,14 +209,14 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
             # unreliable by construction (SNR gate) so it never enters any statistic
             az, el, snr = 0.0, 0.0, -99.0
         else:
-            dur = info.get("clip_duration_s")
+            dur = (float(clip_dur[i]) if clip_dur is not None else None) or info.get("clip_duration_s")
             if dur:
                 # Short-burst stimulus (declared clip_duration_s): the legacy fixed/adaptive
                 # windows below assume a ~1 s clip and would run past this one's end into
                 # post-stimulus silence/reverberation, corrupting both the SNR gate and the DOA
                 # estimate itself. Use (almost) the whole burst instead: skip a brief onset ramp,
                 # stop briefly before the clip ends.
-                win = (0.02, max(0.05, float(dur) - 0.02))
+                win = clip_window(dur)
                 snr = stimid.in_band_snr(wav, int(osamp[i]), info, post=win, capsule_mask=mask)
             else:
                 found = (_adaptive_window(wav, int(osamp[i]), info, mask)
@@ -205,7 +229,9 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
             az, el, mag = _trial_doa(wav, int(osamp[i]), band, win=win, mask=mask)
         rows.append({
             "trial": int(trial[i]), "block": int(blocks[i]), "stim_index": s,
-            "capsules_excluded": excl_str,
+            "capsules_excluded": excl_str, "cache_schema": CACHE_SCHEMA,
+            "win_start_s": round(float(win[0]), 3) if complete[i] else "",
+            "win_end_s": round(float(win[1]), 3) if complete[i] else "",
             "stim_type": info["type"],
             "stim_label": info["label"], "stim_hz": info["dominant_hz"] or "",
             "trial_truth_az": round(float(t_az[i]), 2) if np.isfinite(t_az[i]) else "",

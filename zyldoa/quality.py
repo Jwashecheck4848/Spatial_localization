@@ -43,7 +43,7 @@ def _bandpass(x: np.ndarray, sr: int, lo: float, hi: float) -> np.ndarray:
     return np.fft.irfft(X, n=x.shape[0], axis=0)
 
 
-def capsule_health(folder, onset_samples: np.ndarray) -> dict:
+def capsule_health(folder, onset_samples: np.ndarray, window_s=WINDOW_S) -> dict:
     """Per-capsule RMS (dBFS) and leave-one-out coherence over sampled trial windows."""
     wav = open_recording(folder)
     sr = wav.sample_rate
@@ -53,8 +53,8 @@ def capsule_health(folder, onset_samples: np.ndarray) -> dict:
     rms_db, coh, clip = [], [], np.zeros(n_ch)
     n_used = 0
     for i in idx:
-        seg = wav.read(int(onset_samples[i]) + int(WINDOW_S[0] * sr),
-                       int((WINDOW_S[1] - WINDOW_S[0]) * sr))
+        seg = wav.read(int(onset_samples[i]) + int(window_s[0] * sr),
+                       int((window_s[1] - window_s[0]) * sr))
         if seg.shape[0] < 1024:
             continue
         n_used += 1
@@ -132,7 +132,14 @@ def verify_stimuli(npz, canonical: dict) -> dict:
 
 
 def session_quality(folder, npz, canonical: dict) -> dict:
-    q = {"capsules": capsule_health(folder, npz["onset_samples"]),
+    files = getattr(npz, "files", npz)
+    if "clip_dur_s" in files:
+        # clip-log sessions: health is judged INSIDE the (short) clip, not on its reverb tail
+        d = float(np.min(npz["clip_dur_s"]))
+        win = (0.02, max(0.07, d - 0.02))
+    else:
+        win = WINDOW_S
+    q = {"capsules": capsule_health(folder, npz["onset_samples"], window_s=win),
          "stimuli": verify_stimuli(npz, canonical)}
     caps = q["capsules"].get("capsule_flags", [])
     mism = q["stimuli"].get("mismatches", [])
