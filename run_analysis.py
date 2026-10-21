@@ -12,6 +12,7 @@ from the self-consistent positions, and reports the angular 'miss' (raw and moun
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 from pathlib import Path
 
@@ -204,7 +205,9 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
         per_session: bool = False,
         only: str | list[str] | None = None,
         exclude: str | list[str] | None = None,
-        duplicates: str = "latest") -> dict:
+        duplicates: str = "latest",
+        alignment_overrides: dict | None = None,
+        accept_alignment: list | None = None) -> dict:
     data_root = Path(data_root); results_dir = Path(results_dir); figures_dir = Path(figures_dir)
     results_dir.mkdir(parents=True, exist_ok=True); figures_dir.mkdir(parents=True, exist_ok=True)
     folders = discover_sessions(data_root, only=only, exclude=exclude, duplicates=duplicates)
@@ -218,7 +221,24 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
     # A supplied stim_classification (e.g. the ground truth's) overrides reconciliation so a
     # condition with few positions inherits the same stimulus identities -- the source material is
     # identical across conditions, only the playback differs.
-    metas = [pipeline.align_and_classify(f, results_dir, force=force) for f in folders]
+    # Manual alignment fixes from conditions.json: {"<folder substring>": k} relabels so the
+    # audio found at trial i is attributed to trial i+k (same sign as label_shift_audit's
+    # best_shift); `accept_alignment` lists folder substrings whose ambiguous alignment was
+    # inspected and accepted as-is.
+    def _override_for(name):
+        for key, k in (alignment_overrides or {}).items():
+            if key in name:
+                return int(k)
+        return None
+    metas = [pipeline.align_and_classify(f, results_dir, force=force, user_shift=_override_for(f.name))
+             for f in folders]
+    accepted = lambda name: any(a in name for a in (accept_alignment or []))
+    unaligned = sorted(m["folder"] for m in metas
+                       if (m.get("alignment_qc") or {}).get("ambiguous") and not accepted(m["folder"])
+                       and _override_for(m["folder"]) is None)
+    for f in unaligned:
+        print(f"  [EXCLUDED] {f}: trial alignment is ambiguous -> all its trials are marked "
+              "unreliable (inspect, then add it to 'accept_alignment' or 'alignment_shift_override')")
     if stim_classification is not None:
         canonical = {int(b): v for b, v in stim_classification.items()
                      if str(b).lstrip("-").isdigit()}
@@ -233,10 +253,13 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
     per_quality, exclude_map = {}, {}
     for meta, folder in zip(metas, folders):
         qpath = results_dir / f"{meta['tag']}_quality.json"
-        if qpath.exists() and not force:
-            q = json.loads(qpath.read_text())
-        else:
-            q = quality.session_quality(folder, np.load(meta["npz_path"]), canonical)
+        npz_q = np.load(meta["npz_path"])
+        onset_key = int(np.sum(npz_q["onset_samples"]) % 1_000_000_007)
+        q = json.loads(qpath.read_text()) if (qpath.exists() and not force) else None
+        if q is None or q.get("schema") != pipeline.CACHE_SCHEMA or q.get("onset_key") != onset_key:
+            # recompute when stage 1 changed: capsule health is measured at the trial onsets
+            q = quality.session_quality(folder, npz_q, canonical)
+            q["schema"] = pipeline.CACHE_SCHEMA; q["onset_key"] = onset_key
             qpath.write_text(json.dumps(q, indent=2))
         per_quality[meta["folder"]] = q
         bad = sorted({c["capsule"] for c in q.get("capsules", {}).get("capsule_flags", [])
@@ -275,7 +298,7 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
                 t["truth_az"] = gt["azimuth_deg"]; t["truth_el"] = gt["elevation_deg"]
                 t["radius_m"] = gt["radius_m"]
                 t["position"] = meta["folder"]
-            t["reliable"] = reliable(t)
+            t["reliable"] = reliable(t) and meta["folder"] not in unaligned
         by_folder[meta["folder"]] = (meta, rows)
         combined += rows
 
@@ -387,6 +410,7 @@ def run(force: bool = False, figures: bool = True, data_root: Path = DATA_ROOT,
         summary["calibration_note"] = ("mount fit and applied per rig/session; global "
                                         "mount in 'mounting' is diagnostic only")
     summary["alignment_qc"] = {m["folder"]: m.get("alignment_qc") for m in metas if m.get("alignment_qc")}
+    summary["alignment_excluded_sessions"] = unaligned
     summary["label_shift_audit"] = label_shift_audit(combined)
     for f, a in summary["label_shift_audit"].items():
         if a.get("suspect"):
@@ -429,7 +453,7 @@ def label_shift_audit(combined: list[dict], max_shift: int = 3) -> dict:
     Within one session each speaker position is played for a run of consecutive trials, and
     consecutive positions are >= 30 deg apart. If the audio-to-log alignment is off by k
     trials, every position's group mixes trials from its neighbour and the within-position
-    DOA scatter jumps. For each session we recompute the median within-position scatter with
+    DOA scatter jumps. For each session we recompute the mean within-position scatter with
     the labels shifted by k = -max_shift..max_shift; the correct alignment is k = 0. A session
     whose scatter is clearly lower at some k != 0 is flagged `suspect`."""
     out = {}
@@ -443,8 +467,11 @@ def label_shift_audit(combined: list[dict], max_shift: int = 3) -> dict:
         lab = [(float(r["truth_az"]), float(r["truth_el"])) for r in rows]
         u = calibrate._azel_to_unit([float(r["doa_az"]) for r in rows], [float(r["doa_el"]) for r in rows])
         rel = np.array([bool(r["reliable"]) for r in rows])
+        runs = [len(list(g)) for _, g in itertools.groupby(lab)]
+        blk = int(np.median(runs)) if runs else 0
+        ks = max(1, min(max_shift, (blk - 1) // 2))      # |k| < half a run, or shifts alias
         sc = {}
-        for k in range(-max_shift, max_shift + 1):
+        for k in range(-ks, ks + 1):
             groups: dict = {}
             for i in range(len(rows)):
                 j = i + k
@@ -456,7 +483,7 @@ def label_shift_audit(combined: list[dict], max_shift: int = 3) -> dict:
                     continue
                 g = np.array(g); c = g.mean(axis=0); c /= (np.linalg.norm(c) + 1e-12)
                 dev += list(np.degrees(np.arccos(np.clip(g @ c, -1, 1))))
-            sc[str(k)] = round(float(np.median(dev)), 2) if dev else None
+            sc[str(k)] = round(float(np.mean(dev)), 2) if dev else None   # mean: outlier-sensitive
         valid = {int(k): v for k, v in sc.items() if v is not None}
         if 0 not in valid:
             continue
@@ -467,8 +494,6 @@ def label_shift_audit(combined: list[dict], max_shift: int = 3) -> dict:
         # check catches them: fit one orthogonal transform (Procrustes, reflection allowed for
         # the clockwise-vs-counter-clockwise azimuth convention) from per-position mean DOA to
         # truth under each candidate block shift. The true labelling gives a small residual.
-        runs = [len(list(g)) for _, g in __import__("itertools").groupby(lab)]
-        blk = int(np.median(runs)) if runs else 0
         fit_resid = {}
         if blk >= 2:
             for kb in (-2, -1, 0, 1, 2):
@@ -709,6 +734,10 @@ def load_condition(name: str, conditions_file: Path | str = "conditions.json") -
               "duplicates": c.get("duplicates", "latest")}
     if c.get("only"):
         kwargs["only"] = c["only"]
+    if c.get("alignment_shift_override"):
+        kwargs["alignment_overrides"] = c["alignment_shift_override"]
+    if c.get("accept_alignment"):
+        kwargs["accept_alignment"] = c["accept_alignment"]
     if c.get("exclude"):
         kwargs["exclude"] = c["exclude"]
     if c.get("stim_json"):

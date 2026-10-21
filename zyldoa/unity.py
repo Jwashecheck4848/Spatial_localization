@@ -92,6 +92,13 @@ def clip_family(csv_name: str) -> str:
     raise ValueError(f"Cannot determine stimulus family from CSV filename: {csv_name}")
 
 
+def _int_or(x, default: int) -> int:
+    try:
+        return int(float(x))
+    except (TypeError, ValueError):
+        return default
+
+
 def find_clip_log(folder: Path) -> Path:
     """The session's single clip-log CSV (exactly one per folder in the new format)."""
     hits = sorted(h for h in Path(folder).glob("*.csv") if not h.name.startswith("."))
@@ -145,7 +152,10 @@ def parse_clip_log(folder: Path) -> dict:
         trial.append(i)
         block.append(int(row["SpeakerChannelIndex"]))
         onset_s.append(float(row["ClipStart"]))
-        clip_dur.append(float(row["ClipEnd"]) - float(row["ClipStart"]))
+        try:
+            clip_dur.append(float(row["ClipEnd"]) - float(row["ClipStart"]))
+        except (KeyError, TypeError, ValueError):
+            clip_dur.append(float("nan"))          # falls back to stimuli.json clip_duration_s
         truth_az.append(float(row["SourcePositionAzimuth"]) % 360.0)
         truth_el.append(float(row["SourcePositionElevation"]))
         truth_r.append(float(row["SourcePositionDistance"]) / 100.0)
@@ -161,5 +171,5 @@ def parse_clip_log(folder: Path) -> dict:
         "truth_r": np.array(truth_r, dtype=float),
         "family": family,
         "source_type": "+".join(source_types),
-        "speaker_channel": np.array([int(r["SpeakerChannel"]) for r in rows], dtype=int),
+        "speaker_channel": np.array([_int_or(r.get("SpeakerChannel"), -1) for r in rows], dtype=int),
     }

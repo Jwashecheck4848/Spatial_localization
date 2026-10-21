@@ -4,12 +4,16 @@
 
        python check_alignment.py
 
-   Healthy session: n_on_sound == n_trials (180), shift_margin >= 1, ambiguous False,
-   audit_suspect False. Anything else: open that session's *_onsets.png before trusting it.
+   Healthy session: n_on_sound close to n_trials (180), ambiguous False, audit_suspect
+   False, not EXCLUDED. Sessions whose alignment stays ambiguous after the DOA check are
+   EXCLUDED from statistics: open their *_onsets.png, then either list them under
+   "accept_alignment" or give "alignment_shift_override": {"<folder substring>": k} for that
+   condition in conditions.json (k = the audit's best_shift: audio at trial i is trial i+k).
 
 2) Audit an OLD output folder (first/second pass) without touching any WAV: re-align each
-   cached envelope (*_align.npz) against its clip log and report by how many whole trials the
-   old pipeline's onsets were shifted (0 = correct, 10 = every position mislabelled):
+   cached envelope (*_align.npz) against its clip log (energy only -- the DOA check needs the
+   WAVs) and report by how many whole trials the old pipeline's onsets were shifted
+   (0 = correct, 10 = every position mislabelled):
 
        python check_alignment.py --audit-old "Z:\\...\\newdata_second_pass_output\\results"
 """
@@ -30,7 +34,7 @@ EXP_DIR = Path(__file__).resolve().parent
 
 def report_current(conditions_file: str = "conditions.json") -> None:
     reg = json.loads((EXP_DIR / conditions_file).read_text(encoding="utf-8"))
-    print(f"{'condition':22s} {'session':58s} {'on_sound':>9s} {'margin':>6s} {'ambig':>5s} {'audit':>6s}")
+    print(f"{'condition':22s} {'session':58s} {'on_sound':>9s} {'ambig':>5s} {'doa_fix':>7s} {'audit':>6s}")
     for name, c in reg["conditions"].items():
         if not c.get("enabled", True):
             continue
@@ -40,12 +44,16 @@ def report_current(conditions_file: str = "conditions.json") -> None:
             continue
         s = json.loads(summ.read_text(encoding="utf-8"))
         audit = s.get("label_shift_audit", {})
+        excluded = set(s.get("alignment_excluded_sessions", []))
         for sess, q in (s.get("alignment_qc") or {}).items():
             a = audit.get(sess, {})
-            flag = "  <-- CHECK" if (q.get("ambiguous") or a.get("suspect")
-                                     or q.get("n_on_sound", 0) < 0.9 * q.get("n_trials", 1)) else ""
+            flag = ("  <-- EXCLUDED (ambiguous)" if sess in excluded else
+                    "  <-- CHECK" if (q.get("ambiguous") or a.get("suspect")
+                                      or q.get("n_on_sound", 0) < 0.9 * q.get("n_trials", 1)) else "")
+            fix = q.get("resolved_by_doa_shift")
+            fix_s = "" if fix is None else f"{fix:+d}"
             print(f"{name:22s} {sess[:58]:58s} {q.get('n_on_sound'):>4}/{q.get('n_trials'):<4} "
-                  f"{q.get('shift_margin_trials'):>6} {str(q.get('ambiguous'))[0]:>5s} "
+                  f"{str(q.get('ambiguous'))[0]:>5s} {fix_s:>7s} "
                   f"{str(a.get('suspect'))[0]:>6s}{flag}")
 
 
@@ -53,7 +61,7 @@ def audit_old(results_root: Path, data_root: Path) -> None:
     slug = lambda n: re.sub(r"[^A-Za-z0-9]+", "_", n).strip("_")
     folders = {slug(p.name): p for p in data_root.iterdir() if p.is_dir()}
     seen = set()
-    print(f"{'session':58s} {'on_sound':>9s} {'margin':>6s}  old pipeline shift (trials: count)")
+    print(f"{'session':58s} {'on_sound':>9s} {'ambig':>5s}  old pipeline shift (trials: count)")
     for npz_path in sorted(results_root.rglob("*_align.npz")):
         tag = npz_path.name[:-len("_align.npz")]
         if tag in seen or tag not in folders:
@@ -67,7 +75,7 @@ def audit_old(results_root: Path, data_root: Path) -> None:
         shift = np.round((z["onset_s"] - res["onset_s"]) / q["iti_s"]).astype(int)
         vals, cnt = np.unique(shift, return_counts=True)
         note = "" if q["n_on_sound"] >= 0.9 * q["n_trials"] else "   (weak cached envelope: re-run to verify)"
-        print(f"{tag[:58]:58s} {q['n_on_sound']:>4}/{q['n_trials']:<4} {q['shift_margin_trials']:>6}  "
+        print(f"{tag[:58]:58s} {q['n_on_sound']:>4}/{q['n_trials']:<4} {str(q['ambiguous'])[0]:>5s}  "
               f"{dict(zip(vals.tolist(), cnt.tolist()))}{note}")
 
 

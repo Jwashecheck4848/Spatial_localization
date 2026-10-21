@@ -240,7 +240,9 @@ def onset_contrast_curve(env: np.ndarray, env_rate: float, post_s=(0.01, 0.15),
     j = np.arange(len(env))
     post = _win_db(cum, j + int(round(post_s[0] * env_rate)), j + int(round(post_s[1] * env_rate)))
     pre = _win_db(cum, j + int(round(pre_s[0] * env_rate)), j + int(round(pre_s[1] * env_rate)))
-    valid = (j + pre_s[0] * env_rate >= 0) & (j + post_s[1] * env_rate < len(env))
+    # near the start of the file the pre-window is simply shortened (>= 2 envelope samples),
+    # so a first trial that begins < 0.6 s into the WAV is still detectable
+    valid = (j + pre_s[1] * env_rate >= 2) & (j + post_s[1] * env_rate < len(env))
     return np.where(valid, post - pre, -np.inf)
 
 
@@ -252,10 +254,13 @@ def _count_on_sound(C: np.ndarray, env_rate: float, t: np.ndarray, thr_db: float
     return c, c > thr_db
 
 
+DISP_RATIO, DISP_MIN_DB2 = 3.0, 0.01  # level-signature separation needed to call a shift decisive
+
+
 def align_schedule_env(env: np.ndarray, env_rate: float, unity_onsets: np.ndarray,
                        blocks: np.ndarray | None = None, clip_dur_s: np.ndarray | None = None,
                        max_drift: float = 0.003, thr_db: float = 6.0,
-                       max_shift_trials: int = 20) -> dict:
+                       max_shift_trials: int = 20, shift_override: int | None = None) -> dict:
     """Align a periodic Unity clip schedule to a recording envelope.
 
     1. Coarse global search over clock scale (+/- max_drift) and offset (whole recording):
@@ -268,8 +273,10 @@ def align_schedule_env(env: np.ndarray, env_rate: float, unity_onsets: np.ndarra
        labelling straddles block boundaries).
     3. Refine every trial onset to the steepest rising edge within +/- 60 ms of the prediction.
 
-    Returns onset times (s) plus a `qc` dict: n_on_sound, shift margin (how many more trials
-    the chosen solution explains than the next-best whole-trial shift), and `ambiguous`."""
+    Returns onset times (s) plus a `qc` dict: n_on_sound, the level dispersion of the chosen vs
+    the best rival whole-trial shift, and `ambiguous` (neither the trial count nor the level
+    signature separates the chosen labelling from a shifted one). `shift_override` forces a
+    whole-trial shift relative to the count optimum (manual fix after inspecting a session)."""
     u = np.asarray(unity_onsets, float)
     n = len(u)
     if blocks is None:
@@ -315,12 +322,21 @@ def align_schedule_env(env: np.ndarray, env_rate: float, unity_onsets: np.ndarra
     _, scale, off = best_f
 
     # --- 2. whole-trial ambiguity --------------------------------------------------------------
+    # A labelling shifted by k trials means trial i's audio sits where trial i+k was scheduled.
+    # Shifts are applied as INDEX shifts on the schedule (extrapolated past both ends with the
+    # median interval), so they stay exact for non-periodic schedules (phonemes).
     iti = float(np.median(np.diff(u))) * scale if n > 1 else 0.0
     cum = _cum_power(env)
     lvl_post = int(round(post_len * env_rate))
+    K = max_shift_trials if n > 1 else 0
+    du = float(np.median(np.diff(u))) if n > 1 else 0.0
+    u_ext = np.concatenate([u[0] - du * np.arange(K, 0, -1), u, u[-1] + du * np.arange(1, K + 1)])
+
+    def _times(k):
+        return u_ext[K + k: K + k + n] * scale + off
 
     def _shift_stats(k):
-        t = u * scale + off + k * iti
+        t = _times(k)
         c, h = _count_on_sound(C, env_rate, t, thr_db)
         idx = np.round(t * env_rate).astype(np.int64)
         lv = _win_db(cum, idx + 1, idx + 1 + lvl_post)
@@ -332,20 +348,40 @@ def align_schedule_env(env: np.ndarray, env_rate: float, unity_onsets: np.ndarra
         disp /= max(1, int(h.sum()))
         return int(h.sum()), disp
 
-    shifts = list(range(-max_shift_trials, max_shift_trials + 1)) if iti > 0 else [0]
+    shifts = list(range(-K, K + 1))
     stats = {k: _shift_stats(k) for k in shifts}
     top = max(v[0] for v in stats.values())
-    tied = [k for k, v in stats.items() if v[0] == top]
-    k_best = min(tied, key=lambda k: stats[k][1])
-    off = off + k_best * iti
-    others = [v[0] for k, v in stats.items() if k != k_best]
-    margin = top - (max(others) if others else 0)
+
+    def _better(a, b):
+        """labelling a has a decisively more uniform per-position level signature than b"""
+        da, db = stats[a][1], stats[b][1]
+        return db >= DISP_RATIO * da and db - da >= DISP_MIN_DB2
+
+    # Count optimum first (ties -> most uniform levels -> smallest |k|). A shift of +-1 trial
+    # only loses ONE edge trial, so the count alone is fragile (a missed first trial or a stray
+    # sound after the session flips it): a rival within 1 trial of the count replaces it only
+    # if its level signature is decisively more uniform.
+    k_cnt = min(stats, key=lambda k: (-stats[k][0], stats[k][1], abs(k)))
+    if shift_override is not None:
+        k_best = int(shift_override)
+    else:
+        challengers = [k for k in stats if k != k_cnt and stats[k][0] >= stats[k_cnt][0] - 1
+                       and _better(k, k_cnt)]
+        k_best = min(challengers, key=lambda k: stats[k][1]) if challengers else k_cnt
+    others = [k for k in stats if k != k_best]
+    margin = stats[k_best][0] - (max(stats[k][0] for k in others) if others else 0)
     disp_best = stats[k_best][1]
-    disp_next = min((stats[k][1] for k in tied if k != k_best), default=None)
+    rivals = [k for k in others if stats[k][0] >= stats[k_best][0] - 1]
+    disp_next = min((stats[k][1] for k in rivals), default=None)
+    # decisive = no rival explains (almost) as many trials with a comparably uniform signature.
+    # Non-decisive sessions are resolved downstream from the DOAs (pipeline._doa_shift_check).
+    decisive = all(_better(k_best, k) for k in rivals)
+    off_shift_k = k_best
+    sched = _times(k_best)
 
     # --- 3. per-trial rising-edge refinement ----------------------------------------------------
     edge = onset_contrast_curve(env, env_rate, post_s=(0.0, 0.03), pre_s=(-0.06, -0.005))
-    pred = u * scale + off
+    pred = sched
     onset = pred.copy()
     w = int(round(0.06 * env_rate))
     for i, t in enumerate(pred):
@@ -360,11 +396,15 @@ def align_schedule_env(env: np.ndarray, env_rate: float, unity_onsets: np.ndarra
     c_final, h_final = _count_on_sound(C, env_rate, onset, thr_db)
 
     n_on = int(h_final.sum())
-    ambiguous = bool(margin < 1 and (disp_next is None or disp_next <= 1.5 * disp_best))
-    qc = {"scale": round(scale, 6), "offset_s": round(off, 4), "iti_s": round(iti, 4),
-          "n_trials": int(n), "n_on_sound": n_on, "shift_margin_trials": int(margin),
+    ambiguous = bool(not decisive) and shift_override is None
+    qc = {"scale": round(scale, 6), "offset_s": round(float(sched[0] - u[0] * scale), 4),
+          "iti_s": round(iti, 4), "n_trials": int(n), "n_on_sound": n_on,
+          "chosen_shift_vs_count_optimum": int(off_shift_k - k_cnt),
+          "shift_margin_trials": int(margin),
           "block_level_dispersion_db2": round(disp_best, 3),
-          "next_tied_dispersion_db2": (round(disp_next, 3) if disp_next is not None else None),
+          "rival_dispersion_db2": (round(disp_next, 3) if disp_next is not None else None),
+          "shift_override": (int(shift_override) if shift_override is not None else None),
+          "index_shift_abs": int(k_best),
           "ambiguous": ambiguous,
           "onset_refine_median_ms": round(float(np.median(np.abs(onset - pred))) * 1000, 1)}
     return {"onset_s": onset, "contrast_db": c_final, "on_sound": h_final, "qc": qc}
@@ -372,24 +412,64 @@ def align_schedule_env(env: np.ndarray, env_rate: float, unity_onsets: np.ndarra
 
 def align_schedule(wav: ZyliaWav, unity_onsets: np.ndarray, blocks: np.ndarray,
                    clip_dur_s: np.ndarray | None = None, env_hop: int | None = None,
-                   min_on_sound_frac: float = 0.9) -> dict:
+                   min_on_sound_frac: float = 0.9, doa_check=None,
+                   user_shift: int | None = None) -> dict:
     """`align_trials`-compatible wrapper of `align_schedule_env` for clip-log sessions.
 
     Uses the channel-POWER envelope (no inter-capsule cancellation, so the 5 kHz tone and weak
-    VBAP renders stay visible). Prints a loud warning when the alignment is ambiguous or when
-    fewer than `min_on_sound_frac` of the logged trials land on sound -- those sessions must be
-    inspected (onset figure) before their numbers are trusted."""
+    VBAP renders stay visible).
+
+    `doa_check(onset_s, on_sound) -> dict` (optional, see pipeline._doa_shift_check) re-checks
+    the trial->position labelling from the DOAs themselves: within a session every position is
+    a run of consecutive trials >= 30 deg from its neighbours, so a labelling shifted by k
+    trials inflates the within-position DOA scatter. It returns {"best_shift", "decisive",
+    "scatter_deg"}. When the energy alignment is ambiguous and the DOA check is decisive, its
+    shift is applied; when the two DISAGREE decisively the session is flagged ambiguous.
+
+    `user_shift` (manual fix, from conditions.json `alignment_shift_override`): relabel so
+    that the audio found at trial i is attributed to trial i + user_shift -- the same sign
+    convention as `label_shift_audit`'s / the DOA check's `best_shift`.
+
+    Sessions left ambiguous, or with < `min_on_sound_frac` of trials on sound, get a loud
+    warning; run_analysis marks their trials unreliable unless accepted in conditions.json."""
     if env_hop is None:                      # ~5.3 ms envelope resolution at any sample rate
         env_hop = max(16, int(round(wav.sample_rate / 187.5)))
     env, env_rate = compute_envelope(wav, hop=env_hop, mode="power")
     res = align_schedule_env(env, env_rate, unity_onsets, blocks=blocks, clip_dur_s=clip_dur_s)
-    onset_s = res["onset_s"]
     qc = res["qc"]
+    k_abs = qc["index_shift_abs"]
+    doa_info, conflict = None, False
+    if user_shift is not None:
+        res = align_schedule_env(env, env_rate, unity_onsets, blocks=blocks, clip_dur_s=clip_dur_s,
+                                 shift_override=k_abs - int(user_shift))
+        res["qc"]["user_shift"] = int(user_shift)
+    elif doa_check is not None:
+        doa_info = doa_check(res["onset_s"], res["on_sound"])
+        k_doa = doa_info.get("best_shift")
+        if doa_info.get("decisive") and k_doa not in (None, 0):
+            if qc["ambiguous"]:
+                res = align_schedule_env(env, env_rate, unity_onsets, blocks=blocks,
+                                         clip_dur_s=clip_dur_s, shift_override=k_abs - int(k_doa))
+                res["qc"]["resolved_by_doa_shift"] = int(k_doa)
+            else:
+                conflict = True               # energy says decisive, DOAs say shifted
+        elif qc["ambiguous"] and doa_info.get("decisive") and k_doa == 0:
+            res["qc"]["ambiguous"] = False
+            res["qc"]["resolved_by_doa_shift"] = 0
+    qc = res["qc"]
+    if doa_info is not None:
+        qc["doa_check"] = doa_info
+    if conflict:
+        qc["ambiguous"] = True
+        qc["energy_doa_conflict"] = True
     name = getattr(wav, "path", "")
     if qc["ambiguous"] or qc["n_on_sound"] < min_on_sound_frac * qc["n_trials"]:
         print(f"  [ALIGNMENT WARNING] {Path(name).parent.name if name else ''}: "
-              f"{qc['n_on_sound']}/{qc['n_trials']} trials on sound, whole-trial shift margin "
-              f"{qc['shift_margin_trials']} -> check the onsets figure before trusting this session")
+              f"{qc['n_on_sound']}/{qc['n_trials']} trials on sound, ambiguous={qc['ambiguous']}"
+              f"{' (energy and DOA disagree)' if conflict else ''} -> inspect its onsets figure; "
+              "ambiguous sessions are excluded from statistics until accepted or given an "
+              "'alignment_shift_override' in conditions.json")
+    onset_s = res["onset_s"]
     uniq = np.unique(blocks)
     u = np.asarray(unity_onsets, float)
     block_off = {int(b): float(np.median(onset_s[blocks == b] - u[blocks == b])) for b in uniq}

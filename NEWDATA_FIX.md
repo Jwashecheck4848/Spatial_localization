@@ -55,24 +55,41 @@ With the labels corrected (cached DOAs re-scored, no new audio processing):
 * **Stimulus family from CSV filenames.** One CSV filename is wrong (the phone-ringing Setup1
   *mono* CSV is named `..._vbap_...`). The family now comes from the `ClipName` column when it
   can.
-* **Stale caches.** `CACHE_SCHEMA` was raised to 4 and `*_trials.csv` carries it, so old,
-  shifted caches are never reused. Output also goes to a fresh `newdata_fix_output` folder.
+* **Stale caches.** `CACHE_SCHEMA` was raised to 4. `*_trials.csv` is reused only if its
+  schema matches and its onsets equal the current alignment's. `*_quality.json` (which decides
+  capsule exclusions) is reused only if its schema and onsets match. Output also goes to a
+  fresh `newdata_fix_output` folder.
 
 ## 3. What changed (files)
 
-* `zyldoa/onsets.py`: `align_schedule` / `align_schedule_env`. Fits one global clock
-  (scale, offset) by counting trials that land on a real energy rise. Resolves whole-trial
-  ambiguity explicitly. Refines each onset to its rising edge. Reports QC (`n_on_sound`,
-  `shift_margin_trials`, `ambiguous`).
-* `zyldoa/pipeline.py`: clip-log sessions use `align_schedule`; per-trial windows
-  (`clip_window`); cache schema 4.
+* `zyldoa/onsets.py`: `align_schedule` / `align_schedule_env`.
+  * Fits one global clock (scale, offset) by counting trials that land on a real energy rise.
+  * Tests whole-trial relabellings as index shifts; a rival within one trial of the best count
+    wins only if its per-position level signature is decisively more uniform.
+  * Refines each onset to its rising edge and reports QC.
+  * A `doa_check` callback re-checks the labelling from the DOAs, and `user_shift` allows a
+    manual override.
+* `zyldoa/pipeline.py`:
+  * `_doa_shift_check` computes a quick DOA per trial and counts trials more than 15° from
+    their position's medoid under each relabelling k (|k| < half a position run). The true
+    labelling has about 0; k = ±1 has about 1 per position. It resolves sessions where energy
+    alone is ambiguous (phonemes, with ten different phonemes per position, and the same-level
+    sessions). It flags a session if energy and DOA disagree.
+  * Per-trial windows come from `clip_window`.
+  * A SourceType vs. folder-name warning.
+  * Cache schema 4 and the onset-consistency check.
 * `zyldoa/unity.py`: family from `ClipName`; per-trial `clip_dur_s`, `SourceType`, speaker channel.
 * `zyldoa/stimid.py`, `zyldoa/quality.py`: QC windows inside the clip.
-* `run_analysis.py`: elevation-aware position key; `tol_deg` calibration option;
-  `label_shift_audit`. The audit is an independent check from the DOAs themselves
-  (within-position scatter and a mount-free rigid-fit residual vs. label shift). Any session
-  whose labels look shifted is printed as a `[LABEL-SHIFT WARNING]` and stored in
-  `summary.json`.
+* `run_analysis.py`:
+  * Elevation-aware position key and a `tol_deg` calibration option.
+  * **Sessions whose alignment is still ambiguous after the DOA check are excluded from all
+    statistics** (`alignment_excluded_sessions` in `summary.json`, `[EXCLUDED]` in the log).
+    To keep one, inspect its `*_onsets.png`, then add it to the condition's `accept_alignment`
+    list or give it an `alignment_shift_override` (`{"<folder substring>": k}`; k means the
+    audio at trial i is trial i+k, the same sign as the audit's `best_shift`).
+  * `label_shift_audit` is an independent post-hoc check that prints
+    `[LABEL-SHIFT WARNING]`. It uses within-position scatter for small shifts and a mount-free
+    rigid-fit residual for whole-block shifts, which the scatter test cannot see.
 * `conditions.json`: only the six CC, Setup1+2 conditions (plus one optional, disabled 9/13
   VBAP pink-noise take). One rigid-rotation mount fitted on physical pink noise
   (`pn_s12_mono_cc`, `tol_deg` 30, so all 36 positions are kept), applied externally to every
@@ -85,9 +102,12 @@ With the labels corrected (cached DOAs re-scored, no new audio processing):
 * `tests/test_align_schedule.py`: synthetic periodic schedule with a quiet first block. The
   legacy aligner lands 11 trials late; the new one is within 5 ms on every trial.
 * `tests/test_newdata_end_to_end.py`: synthetic rigid-sphere plane waves written as 24-bit
-  19-channel WAVs plus clip logs, run through the real `run_analysis.run()`. Fixed pipeline:
-  0.16° miss, identity mount. Legacy aligner patched back in: 22° miss with sub-degree
-  "precision", a bogus mount, and both sessions flagged by the audit.
+  19-channel WAVs plus clip logs, run through the real `run_analysis.run()`.
+  * Fixed pipeline: 0.16° miss, identity mount; the external-mount path is also checked.
+  * A "hard" session (equal levels, silent first clip, stray sound after the end) is
+    misaligned by energy and corrected by the DOA check.
+  * Legacy aligner patched back in: 22° miss with sub-degree "precision", a bogus mount, and
+    both sessions flagged by the audit.
 * `build_notebook.py` / `pipeline.ipynb`: alignment-QC cell; the SRP cross-check uses each
   trial's own window.
 
@@ -99,7 +119,7 @@ python tests/test_align_schedule.py          # ~10 s, no data needed
 python tests/test_newdata_end_to_end.py      # ~1 min, no data needed
 python run_analysis.py --condition pn_s12_mono_cc    # mount source first
 python run_analysis.py --condition fphon_s12_mono_cc # ... or just Run All in pipeline.ipynb
-python check_alignment.py                    # every session should be 180/180, margin >= 1, no flags
+python check_alignment.py                    # every session: ~180/180 on sound, not ambiguous/EXCLUDED, audit clean
 python compare_conditions.py
 ```
 
@@ -114,4 +134,8 @@ python compare_conditions.py
   first-order model.
 * **Weak sessions**: phone ringing VBAP, 1000 Hz VBAP, female phonemes VBAP and 5 kHz could not
   be verified from the old (channel-mean) envelopes. Confirm them in `check_alignment.py` after
-  the re-run.
+  the re-run. Any that come out EXCLUDED need a look at their onsets figure.
+* Two sessions (1000 Hz setup2 mono, 250 Hz Setup1 mono) have exactly 162/180 = 18 × 9 trials
+  on sound in the old envelopes: one clip per position seems not to play, or plays very quietly.
+  This is harmless for the labels (the DOA check treats it as an equivalent labelling), but it
+  is worth checking in Unity.

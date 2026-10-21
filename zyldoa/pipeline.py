@@ -9,6 +9,7 @@ force=True to recompute. WAVs are streamed.
 from __future__ import annotations
 
 import csv
+import itertools
 import json
 import re
 from pathlib import Path
@@ -62,7 +63,90 @@ def folder_tag(folder: Path) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", Path(folder).name).strip("_")
 
 
-def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> dict:
+def _family_band(family: str) -> tuple[float, float]:
+    m = re.match(r"(\d+) hz tone", family or "")
+    if m:
+        fc = float(m.group(1))
+        return (fc * 2 ** (-1 / 6), fc * 2 ** (1 / 6))
+    return doa.BROADBAND_HZ
+
+
+OUTLIER_DEG = 15.0   # a trial this far from its position's medoid DOA is "in the wrong group"
+
+
+def _doa_shift_check(wav, blocks: np.ndarray, band, win, max_shift: int = 3):
+    """Build the DOA-consistency callback for `onsets.align_schedule`.
+
+    For every trial that landed on sound, estimate a quick DOA (same intensity estimator and
+    band as the main analysis) at the aligned onset, then score each candidate relabelling
+    k = -max_shift..max_shift by the median within-position angular scatter when the audio at
+    trial i is attributed to trial i+k. Positions differ by >= 30 deg, so the true labelling
+    has (almost) no trial far from its position's medoid DOA, while k = +-1 puts ~1 trial per
+    position into the wrong group. Decisive when every non-equivalent k has at least
+    max(3, 3% of trials) more such outliers than the chosen labelling."""
+    sr = wav.sample_rate
+
+    # shifts must stay below half a position run, or k and k -/+ run_length alias
+    runs = [len(list(g)) for _, g in itertools.groupby(np.asarray(blocks).tolist())]
+    run_len = int(np.median(runs)) if runs else 10
+    max_shift = int(max(1, min(max_shift, (run_len - 1) // 2)))
+
+    def check(onset_s, on_sound):
+        n = len(onset_s)
+        U = np.full((n, 3), np.nan)
+        for i in np.flatnonzero(on_sound):
+            seg = wav.read(int(round((onset_s[i] + win[0]) * sr)), int((win[1] - win[0]) * sr))
+            if len(seg) < 256:
+                continue
+            I = doa.intensity_vector(seg, sr, band)
+            nrm = np.linalg.norm(I)
+            if nrm > 0:
+                U[i] = I / nrm
+        has = np.isfinite(U[:, 0])
+        n_has = int(has.sum())
+        sc, outl, equiv = {}, {}, {}
+        for k in range(-max_shift, max_shift + 1):
+            groups: dict = {}
+            same = []
+            for i in range(n):
+                j = i + k
+                if 0 <= j < n and has[i]:
+                    groups.setdefault(int(blocks[j]), []).append(U[i])
+                    same.append(blocks[j] == blocks[i])
+            # A one-trial shift puts ~1 trial per position into the WRONG position group, i.e. a
+            # >= 30 deg outlier. Count trials > OUTLIER_DEG from their group's medoid (robust
+            # centre) -- the true labelling has (almost) none; also keep the mean deviation.
+            dev, n_out = [], 0
+            for g in groups.values():
+                if len(g) < 3:
+                    continue
+                g = np.array(g)
+                A = np.degrees(np.arccos(np.clip(g @ g.T, -1, 1)))
+                d = A[int(np.argmin(np.median(A, axis=1)))]
+                dev += list(d); n_out += int((d > OUTLIER_DEG).sum())
+            sc[k] = float(np.mean(dev)) if dev else None
+            outl[k] = n_out if dev else None
+            # labelling k assigns every on-sound trial to the SAME position as k=0 (happens when
+            # e.g. the first clip of every position is silent): harmless, not a real ambiguity
+            equiv[k] = bool(same) and float(np.mean(same)) >= 0.99
+        valid = [k for k in sc if sc[k] is not None]
+        if 0 not in valid:
+            return {"best_shift": None, "decisive": False, "scatter_deg": {}, "outliers": {}}
+        best = min(valid, key=lambda k: (outl[k], sc[k]))
+        if equiv.get(best) and best != 0:
+            best = 0                                   # equivalent to the energy solution
+        others = [k for k in valid if k != best and not (equiv.get(k) and equiv.get(best))]
+        need = outl[best] + max(3, int(0.03 * n_has))
+        decisive = (not others) or all(outl[k] >= need for k in others)
+        return {"best_shift": int(best), "decisive": bool(decisive), "n_trials_used": n_has,
+                "outliers": {str(k): outl[k] for k in valid},
+                "scatter_deg": {str(k): round(sc[k], 2) for k in valid},
+                "equivalent_shifts": [int(k) for k, e in equiv.items() if e and k != 0]}
+    return check
+
+
+def align_and_classify(folder: Path, results_dir: Path, force: bool = False,
+                       user_shift: int | None = None) -> dict:
     """Stage 1: separate trials (per-block clock) and identify each stimulus.
 
     Trial timing, stimulus identity, and truth position all come from the session's single
@@ -76,7 +160,7 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
     meta_path = results_dir / f"{tag}_align.json"
     if npz_path.exists() and meta_path.exists() and not force:
         meta = json.loads(meta_path.read_text())
-        if meta.get("schema") == CACHE_SCHEMA:
+        if meta.get("schema") == CACHE_SCHEMA and meta.get("user_shift") == user_shift:
             meta["npz_path"] = str(npz_path)
             return meta
 
@@ -89,7 +173,15 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
     # Clip-log sessions run on a strictly periodic schedule with no inter-block pauses, which
     # the legacy per-block aligner (`onsets.align_trials`) cannot place: it anchored whole
     # sessions 1-11+ trials late. Use the global schedule aligner instead.
-    al = onsets.align_schedule(wav, log["onset_unity_s"], blocks, clip_dur_s=log["clip_dur_s"])
+    st = log["source_type"].lower(); nm = folder.name.lower()
+    if ("vbap" in nm and "vbp" not in st) or ("mono" in nm and "mono" not in st):
+        print(f"  [warn] {folder.name}: folder name and clip-log SourceType "
+              f"({log['source_type']}) disagree -- check which render this session really is")
+    dur_ok = log["clip_dur_s"][np.isfinite(log["clip_dur_s"])]
+    min_dur = float(np.min(dur_ok)) if len(dur_ok) else 0.2
+    check = _doa_shift_check(wav, blocks, _family_band(log["family"]), clip_window(min_dur))
+    al = onsets.align_schedule(wav, log["onset_unity_s"], blocks, clip_dur_s=log["clip_dur_s"],
+                               doa_check=check, user_shift=user_shift)
     osamp = al["onset_samples"]
     complete = complete_trials_mask(osamp, wav.sample_rate, wav.n_frames)
     if not complete.all():
@@ -99,7 +191,7 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
     if not complete.any():
         raise ValueError(f"{folder.name}: no complete trials inside the recording")
     # QC spectra from INSIDE the clip (the legacy 0.15-0.55 s window sits after a 200 ms clip)
-    spec_win = clip_window(float(np.min(log["clip_dur_s"])))
+    spec_win = clip_window(min_dur)
     ident = stimid.identify_blocks(wav, osamp[complete], stim_index[complete], win=spec_win)
     wav.close()
 
@@ -116,6 +208,7 @@ def align_and_classify(folder: Path, results_dir: Path, force: bool = False) -> 
         "has_trial_truth": bool(np.isfinite(truth_az).any()),
         "source_type": log["source_type"],
         "alignment_qc": al["alignment_qc"],
+        "user_shift": user_shift,
         "npz_path": str(npz_path),
     }
     meta_path.write_text(json.dumps(meta, indent=2))
@@ -182,9 +275,16 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
     if csv_path.exists() and not force:
         with open(csv_path, newline="") as f:
             rows = list(csv.DictReader(f))
-        if rows and "stim_index" in rows[0] \
-                and rows[0].get("capsules_excluded", "") == excl_str \
-                and str(rows[0].get("cache_schema", "")) == str(CACHE_SCHEMA):
+        ok = (rows and "stim_index" in rows[0]
+              and rows[0].get("capsules_excluded", "") == excl_str
+              and str(rows[0].get("cache_schema", "")) == str(CACHE_SCHEMA))
+        if ok:
+            # the DOAs must have been computed at THESE onsets (stage 1 may have been re-run,
+            # e.g. after an alignment override)
+            on_npz = np.load(results_dir / f"{tag}_align.npz")["onset_s"]
+            on_csv = np.array([float(r["onset_s"]) for r in rows])
+            ok = len(on_csv) == len(on_npz) and np.allclose(on_csv, np.round(on_npz, 4), atol=2e-4)
+        if ok:
             return rows
         # stale cache (older schema = possibly shifted alignment) or exclusion set changed
 
@@ -209,7 +309,8 @@ def estimate_doa(folder: Path, canonical_stim: dict, results_dir: Path,
             # unreliable by construction (SNR gate) so it never enters any statistic
             az, el, snr = 0.0, 0.0, -99.0
         else:
-            dur = (float(clip_dur[i]) if clip_dur is not None else None) or info.get("clip_duration_s")
+            dur = (float(clip_dur[i]) if clip_dur is not None and np.isfinite(clip_dur[i])
+                   else None) or info.get("clip_duration_s")
             if dur:
                 # Short-burst stimulus (declared clip_duration_s): the legacy fixed/adaptive
                 # windows below assume a ~1 s clip and would run past this one's end into

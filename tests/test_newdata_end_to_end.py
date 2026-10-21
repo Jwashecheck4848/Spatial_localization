@@ -74,7 +74,10 @@ def write_wav24(path, x):
         fh.write(b"data" + struct.pack("<I", len(data)) + data)
 
 
-def make_session(root: Path, folder: str, positions, seed: int, recompute_doa_check=False):
+def make_session(root: Path, folder: str, positions, seed: int, hard: bool = False):
+    """hard=True: the case energy alone cannot solve -- every position at the same level, the
+    first clip silent, and a stray sound one interval after the last clip (so a labelling
+    shifted by one trial explains exactly as many sounds)."""
     rng = np.random.default_rng(seed)
     d = root / folder; d.mkdir(parents=True)
     n = len(positions) * REPS
@@ -86,13 +89,18 @@ def make_session(root: Path, folder: str, positions, seed: int, recompute_doa_ch
     for i in range(n):
         p = i // REPS
         az_cw, el = positions[p]
-        lvl = -70.0 if p == 0 else rng.uniform(-38, -30)   # quiet first position
+        silent = hard and i == 0                          # first clip never played
+        if hard:
+            lvl = -34.0
+        else:
+            lvl = -70.0 if p == 0 else rng.uniform(-38, -30)   # quiet first position
         # identity mount: Zylia front = Unity az 0, Zylia CCW azimuth = -Unity (clockwise) az
         src = geometry.azel_to_unit(-az_cw, el)
         burst = plane_wave_burst(src, int(CLIP * FS), rng)
         burst *= 10 ** (lvl / 20) / (np.sqrt(np.mean(burst ** 2)) + 1e-12)
         s = int(round(wav_on[i] * FS))
-        x[s:s + len(burst)] += burst
+        if not silent:
+            x[s:s + len(burst)] += burst
         dist = 130 if el < 0 else 140
         rows.append({"SourceType": "Mono", "SpeakerChannelIndex": p, "SpeakerChannel": 25 + p,
                      "SourcePositionXYZ": "0;0;0", "SourcePositionAzimuth": az_cw,
@@ -100,6 +108,11 @@ def make_session(root: Path, folder: str, positions, seed: int, recompute_doa_ch
                      "ClipNumber": 0, "ClipRepetition": i % REPS, "ClipName": "01_pink_noise.wav",
                      "DateTime": "2026__09_13__23_40_33", "ClipStart": f"{u[i]:.6f}",
                      "ClipEnd": f"{u[i] + CLIP:.6f}"})
+    if hard:                                              # stray sound after the session
+        stray = plane_wave_burst(geometry.azel_to_unit(100.0, 10.0), int(CLIP * FS), rng)
+        stray *= 10 ** (-34 / 20) / (np.sqrt(np.mean(stray ** 2)) + 1e-12)
+        s = int(round((wav_on[-1] + ITI * 1.00015) * FS))
+        x[s:s + len(stray)] += stray
     write_wav24(d / "Take_20260913_23_40.wav", x)
     with open(d / f"{folder}___.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
@@ -137,6 +150,16 @@ def main():
                        external_calibration=s["mounting"])
         med_ext = s_ext["corrected_miss_by_stimulus"]["pink noise"]["median"]
         assert med_ext < 3.0, f"external-mount run: {med_ext} deg"
+
+        print("\n######## HARD case: energy is ambiguous, the DOA check must resolve it ########")
+        hard = tmp / "hard"
+        make_session(hard, "Pink_Noise_Setup1_CC___2026__09_13__23_40_33", SETUP1, seed=33, hard=True)
+        s_h = run_once(hard, tmp / "hard_out")
+        q = next(iter(s_h["alignment_qc"].values()))
+        print("hard-case alignment qc:", {k: q.get(k) for k in ("ambiguous", "resolved_by_doa_shift",
+                                                                 "n_on_sound", "doa_check")})
+        med_h = s_h["corrected_miss_by_stimulus"]["pink noise"]["median"]
+        assert not q["ambiguous"] and med_h < 3.0, f"hard case not resolved: {q}, miss {med_h}"
 
         print("\n######## LEGACY aligner patched back in (reproduces the bug) ########")
         orig = onsets.align_schedule
