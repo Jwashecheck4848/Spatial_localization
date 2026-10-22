@@ -33,6 +33,9 @@ NAME = "all_sounds_mono_vs_vbap"
 def _load_and_concat(registry: dict, names: list[str]) -> pd.DataFrame:
     frames = []
     for name in names:
+        if name not in registry["conditions"] or not registry["conditions"][name].get("enabled", True):
+            print(f"  [skip] {name}: not an enabled condition in conditions.json")
+            continue
         rd = _results_dir(registry, name)
         if not (rd / "all_trials.csv").exists():
             print(f"  [skip] {name}: no results yet (run `python run_analysis.py "

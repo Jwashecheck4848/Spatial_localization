@@ -25,6 +25,12 @@ def code(text):
 md(r"""
 # CAVE speaker-array validation — unified Zylia pipeline
 
+> **Branch `newdata-fix`** -- analyses the 2026-09/10 clip-log recordings (curtains closed,
+> Setup1 + Setup2 pooled, no Outer speakers). What was wrong with the first/second pass and what
+> changed: `NEWDATA_FIX.md`. The condition table below describes the July study; the conditions
+> actually run here are the six in `conditions.json` (pink noise / phonemes / five 200 ms sounds,
+> each physical and VBAP).
+
 One notebook, every condition. The **Zylia ZM-1** measures direction-of-arrival (rigid-sphere
 first-order Ambisonic active intensity) for each recorded condition:
 
@@ -351,75 +357,34 @@ for name in summaries:
 """)
 
 md(r"""
-## 6. Paper layer — derived statistics and publication figures
+## 6. All sounds — physical (mono) vs VBAP, Setup1 + Setup2, curtains closed
 
-Heavy lifting lives in two scripts; this section only displays their outputs.
-
-- `paper_stats.py` recomputes **every derived number quoted in the paper** (room
-  multipliers and tails, the elevation opposition, the ear-level upward pull, instrument
-  spec, speaker-geometry skew, reference-layout table) into `results/paper_stats.json`.
-- `make_paper_figures.py` builds the print-safe publication figures straight into
-  `Paper/figures/` (grayscale-survivable encodings: hatching, markers, line styles,
-  monotonic colormaps).
-
-Rerun both after any comparison rerun; then rebuild the paper.
+One matched-cell comparison across every stimulus family (pink noise, phonemes, 250/1000/5000 Hz
+tones, phone ringing, applause), pooled from the six conditions (`compare_all_sounds.py`).
+Positive delta = VBAP localizes worse than the physical speaker at the same (az, el).
+(The July paper layer -- `paper_stats.py` / `make_paper_figures.py` -- lives on `main` /
+`legacy-output-redirect`; it needs the July conditions and is not run here.)
 """)
 code(r"""
-import paper_stats
-paper_stats.main()
-ps = json.loads((EXP_DIR / "results" / "paper_stats.json").read_text())
+import compare_all_sounds as cas
+cas.main()
+comp = json.loads((EXP_DIR / "results" / "comparisons" / cas.NAME / "comparison.json").read_text())
+display(pd.DataFrame(comp["per_stimulus"]).T)
+for fig in comp.get("figures", []):
+    if Path(fig).exists():
+        display(Image(fig))
+""")
 
-display(Markdown("### Room effect per stimulus (medians, multiplier, tails)"))
-display(pd.DataFrame(ps["room_effect"]["per_stimulus"]).T[
-    ["anechoic_median", "cave_median", "room_multiplier", "cave_p90", "delta_median"]])
+md(r"""
+## 7. Alignment check (same table as `python check_alignment.py`)
 
-display(Markdown("### The elevation opposition (noise-like deltas, deg)"))
-opp = pd.DataFrame({
-    "room penalty (CAVE - anechoic)":
-        {el: v["delta_median"] for el, v in ps["room_effect"]["noise_like_by_elevation"].items()},
-    "rendering penalty (phantom - physical)":
-        {el: v["delta_median"] for el, v in ps["vbap_structure"]["penalty_by_elevation"].items()},
-})
-opp.index.name = "elevation (deg)"
-display(opp)
-
-display(Markdown("### Ear-level phantom structure (the upward pull)"))
-display(pd.Series(ps["vbap_structure"]["ear_level"]))
-display(Markdown(
-    f"Speaker budget: **{ps['speaker_geometry']['n_above_20deg']} of "
-    f"{ps['speaker_geometry']['n_speakers']}** speakers above +20°, only "
-    f"**{ps['speaker_geometry']['n_within_6deg_ear_level']}** within 6° of ear level "
-    f"(mean {ps['speaker_geometry']['mean_elevation']}°)."))
-
-display(Markdown("### Instrument spec (anechoic chamber)"))
-display(pd.Series(ps["instrument"]["anechoic_precision_by_stimulus"], name="precision (deg)"))
-display(Markdown(
-    f"Day-to-day azimuth-offset spread {ps['instrument']['anechoic_day_az_offset_spread']}°; "
-    f"mount elevation offset {ps['instrument']['mount_elevation_offset']['cave']}° in the CAVE vs "
-    f"{ps['instrument']['mount_elevation_offset']['anechoic']}° in the chamber; "
-    f"{ps['instrument']['trials']['total']:,} trials total."))
-
-display(Markdown("### Reference-layout comparison (optimizer objective, same room)"))
-display(pd.DataFrame(ps["layout_comparison"]).T)
-
-sp = ps["spectral_predictor"]
-display(Markdown("### Spectral-complexity vs room penalty (DESCRIPTIVE TREND, not a validated predictor)"))
-display(pd.DataFrame(sp["per_stimulus"]).T.sort_values("room_penalty_deg"))
-display(Markdown(
-    f"Effective spectral bandwidth (log N_eff, anechoic {sp['band_hz'][0]:.0f}-{sp['band_hz'][1]:.0f} Hz) "
-    f"vs room penalty: Spearman rho = **{sp['spearman_rho_headline_delta']}** (headline delta, "
-    f"p={sp['spearman_p_all7']}, n={sp['n_stimuli']}) / **{sp['spearman_rho_matched_cell_delta']}** (matched-cell delta); "
-    f"**{sp['spearman_rho_no_pure_tones']}** excluding the two pure tones (descriptive, no inferential p).\n\n"
-    f"**Fragility (why it is a trend, not a predictor):** band-dependent "
-    f"({sp['diagnostics']['band_sensitivity_rho']}); resolution-invariant flatness only reaches "
-    f"{sp['diagnostics']['flatness_rho_all7']} (all 7) / {sp['diagnostics']['flatness_rho_no_tones']} (no tones); "
-    f"NOT a level confound ({sp['diagnostics']['level_confound_rho_all7']} all 7, "
-    f"{sp['diagnostics']['level_confound_rho_no_tones']} no tones)."))
+Every session should show ~180/180 trials on sound, `ambig` False, and no `EXCLUDED` / `CHECK`
+flag. An EXCLUDED session needs a look at its `*_onsets.png` before it is accepted or given an
+`alignment_shift_override` in `conditions.json`.
 """)
 code(r"""
-import make_paper_figures as mpf
-for p in mpf.build_all():
-    display(Markdown(f"**{Path(p).name}**")); display(Image(str(p)))
+import check_alignment
+check_alignment.report_current()
 """)
 
 out = EXP_DIR / "pipeline.ipynb"
